@@ -1,7 +1,7 @@
 import { storage } from "./storage";
 import { db } from "./db";
-import { players, resourceNodes } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { players, resourceNodes, stationModules, buildings } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 import { log } from "./vite";
 import { getEffectiveArrayStats } from "@shared/schema";
 
@@ -62,6 +62,14 @@ async function processArrayExtractions() {
 }
 
 async function processArrayExtractionSingle(array: any) {
+  // Check if array bay is powered before processing extraction
+  const isArrayBayPowered = await checkArrayBayPowered(array.playerId);
+  
+  if (!isArrayBayPowered) {
+    log(`[Array Extraction Tick] Skipping array ${array.arrayName} - array bay not powered`);
+    return;
+  }
+  
   // Get the rift this array is deployed to
   if (!array.targetRiftId) {
     log(`[Array Extraction Tick] Array ${array.arrayName} has no target rift, skipping`);
@@ -135,4 +143,34 @@ async function processArrayExtractionSingle(array: any) {
   });
 
   log(`[Array Extraction Tick] Array ${array.arrayName} extracted ${crystalsExtracted} crystals from ${rift.nodeName}`);
+}
+
+async function checkArrayBayPowered(playerId: string): Promise<boolean> {
+  // Check BOTH buildings and stationModules for array_bay
+  const [arrayBay] = await db
+    .select()
+    .from(buildings)
+    .where(and(
+      eq(buildings.playerId, playerId),
+      eq(buildings.buildingType, "array_bay"),
+      eq(buildings.isBuilt, true)
+    ))
+    .limit(1);
+  
+  if (arrayBay) {
+    return arrayBay.isPowered; // Return actual isPowered value
+  }
+  
+  // Also check stationModules if no building found
+  const [module] = await db
+    .select()
+    .from(stationModules)
+    .where(and(
+      eq(stationModules.playerId, playerId),
+      eq(stationModules.moduleType, "array_bay"),
+      eq(stationModules.isBuilt, true)
+    ))
+    .limit(1);
+  
+  return module ? module.isPowered : true; // Default to true if neither exists
 }

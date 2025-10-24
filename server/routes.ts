@@ -2,12 +2,19 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPlayerSchema, insertBuildingSchema, updatePlayerSchema, updateBuildingSchema, getEffectiveDroneStats } from "@shared/schema";
+import { insertPlayerSchema, insertBuildingSchema, updatePlayerSchema, updateBuildingSchema, getEffectiveDroneStats, POWER_MODULE_TIERS, CENTRAL_HUB_CONFIG, BUILDING_POWER_COSTS, stationModules } from "@shared/schema";
 import { z } from "zod";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 
 // Helper function to calculate accumulated resources
 function calculateAccumulatedResources(building: any, now: Date) {
   if (!building.isBuilt || !building.productionRate || !building.lastCollectedAt || !building.maxStorage) {
+    return building;
+  }
+  
+  // No new resources if not powered
+  if (!building.isPowered) {
     return building;
   }
   
@@ -786,6 +793,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error upgrading extraction array:", error);
       res.status(400).json({ message: error.message || "Failed to upgrade extraction array" });
+    }
+  });
+
+  // ============================================================================
+  // POWER SYSTEM & CENTRAL HUB (Phase 5)
+  // ============================================================================
+
+  // Upgrade Central Hub
+  app.post('/api/central-hub/upgrade', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { targetLevel } = req.body;
+
+      // Validate targetLevel
+      if (!targetLevel || typeof targetLevel !== 'number') {
+        return res.status(400).json({ message: "Target level is required and must be a number" });
+      }
+
+      // Attempt upgrade
+      await storage.upgradeCentralHub(userId, targetLevel);
+
+      // Get updated player data
+      const updatedPlayer = await storage.getPlayer(userId);
+      res.json(updatedPlayer);
+    } catch (error: any) {
+      console.error("Error upgrading central hub:", error);
+      res.status(400).json({ message: error.message || "Failed to upgrade central hub" });
+    }
+  });
+
+  // Build power module
+  app.post('/api/power-modules/build', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { tier, name, positionX, positionY } = req.body;
+
+      // Validate inputs
+      if (!tier || typeof tier !== 'number') {
+        return res.status(400).json({ message: "Tier is required and must be a number" });
+      }
+      if (!name || typeof name !== 'string' || name.trim().length === 0) {
+        return res.status(400).json({ message: "Name is required" });
+      }
+      if (typeof positionX !== 'number' || typeof positionY !== 'number') {
+        return res.status(400).json({ message: "Position coordinates are required" });
+      }
+
+      // Get player
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Find tier config
+      const tierConfig = POWER_MODULE_TIERS.find(t => t.tier === tier);
+      if (!tierConfig) {
+        return res.status(400).json({ message: `Invalid tier ${tier}` });
+      }
+
+      // Check hub level requirement (tier gating)
+      if (player.hubLevel < tierConfig.requiredHubLevel) {
+        return res.status(400).json({ 
+          message: `Central Hub level ${tierConfig.requiredHubLevel} required. Current level: ${player.hubLevel}` 
+        });
+      }
+
+      // Check resources
+      const cost = tierConfig.buildCost;
+      const missingResources = [];
+      if (cost.metal && player.metal < cost.metal) {
+        missingResources.push(`metal (need ${cost.metal}, have ${player.metal})`);
+      }
+      if (cost.crystals && player.crystals < cost.crystals) {
+        missingResources.push(`crystals (need ${cost.crystals}, have ${player.crystals})`);
+      }
+      
+      if (missingResources.length > 0) {
+        return res.status(400).json({ message: `Insufficient resources: ${missingResources.join(', ')}` });
+      }
+
+      // Deduct resources and create module (transaction)
+      const now = new Date();
+      const upgradeCompletesAt = new Date(now.getTime() + tierConfig.buildTime * 1000);
+
+      // Deduct resources
+      await storage.updatePlayer(userId, {
+        metal: player.metal - (cost.metal || 0),
+        crystals: player.crystals - (cost.crystals || 0),
+      });
+
+      // Create station module
+      const [module] = await db.insert(stationModules).values({
+        playerId: userId,
+        moduleType: 'power_module',
+        moduleName: name.trim(),
+        level: 1,
+        powerTier: tier,
+        powerOutput: tierConfig.powerOutput,
+        powerCost: 0,
+        positionX,
+        positionY,
+        isBuilt: false,
+        isUpgrading: false,
+        buildStartedAt: now,
+        upgradeCompletesAt,
+      }).returning();
+
+      // Enforce power limits after building construction
+      await storage.enforcePowerLimits(userId);
+
+      res.json(module);
+    } catch (error: any) {
+      console.error("Error building power module:", error);
+      res.status(500).json({ message: error.message || "Failed to build power module" });
+    }
+  });
+
+  // Get all power modules
+  app.get('/api/power-modules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Query power modules for player
+      const modules = await db
+        .select()
+        .from(stationModules)
+        .where(
+          and(
+            eq(stationModules.playerId, userId),
+            eq(stationModules.moduleType, 'power_module')
+          )
+        );
+
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching power modules:", error);
+      res.status(500).json({ message: "Failed to fetch power modules" });
+    }
+  });
+
+  // Get power budget
+  app.get('/api/power-budget', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Calculate power budget using storage method
+      const powerBudget = await storage.calculatePowerBudget(userId);
+      
+      res.json(powerBudget);
+    } catch (error) {
+      console.error("Error calculating power budget:", error);
+      res.status(500).json({ message: "Failed to calculate power budget" });
+    }
+  });
+
+  // Get central hub unlock info
+  app.get('/api/central-hub/unlock-info', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get player
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      const currentLevel = player.hubLevel;
+
+      // Find unlocked tiers
+      const unlockedTiers = POWER_MODULE_TIERS
+        .filter(tierConfig => tierConfig.requiredHubLevel <= currentLevel)
+        .map(tierConfig => tierConfig.tier);
+
+      // Get next level cost if available
+      let nextLevelCost = null;
+      if (currentLevel < CENTRAL_HUB_CONFIG.maxLevel) {
+        const nextLevelConfig = CENTRAL_HUB_CONFIG.upgradeCosts.find(
+          cost => cost.level === currentLevel + 1
+        );
+        if (nextLevelConfig) {
+          nextLevelCost = {
+            level: nextLevelConfig.level,
+            metal: nextLevelConfig.metal,
+            crystals: nextLevelConfig.crystals || 0,
+            credits: nextLevelConfig.credits,
+          };
+        }
+      }
+
+      res.json({
+        currentLevel,
+        unlockedTiers,
+        nextLevelCost,
+      });
+    } catch (error) {
+      console.error("Error fetching central hub unlock info:", error);
+      res.status(500).json({ message: "Failed to fetch central hub unlock info" });
     }
   });
 

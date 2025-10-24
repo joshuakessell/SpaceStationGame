@@ -1,6 +1,9 @@
 import { storage } from "./storage";
 import { log } from "./vite";
 import { getEffectiveDroneStats } from "@shared/schema";
+import { db } from "./db";
+import { stationModules, buildings } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
 
 /**
  * Mission Lifecycle Tick System
@@ -51,6 +54,14 @@ async function processMissionLifecycle() {
   const now = new Date();
   
   for (const mission of missions) {
+    // Check if drone hangar is powered before processing mission
+    const isDroneHangarPowered = await checkDroneHangarPowered(mission.playerId);
+    
+    if (!isDroneHangarPowered) {
+      log(`[Mission Tick] Skipping mission ${mission.id} - drone hangar not powered`);
+      continue;
+    }
+    
     // Handle state transitions based on timestamps
     if (mission.status === "traveling" && mission.arrivalAt && now >= mission.arrivalAt) {
       // Drone has arrived, start mining
@@ -74,6 +85,36 @@ async function processMissionLifecycle() {
       log(`[Mission Tick] Mission ${mission.id} completed`);
     }
   }
+}
+
+async function checkDroneHangarPowered(playerId: string): Promise<boolean> {
+  // Check BOTH buildings and stationModules for drone_hangar
+  const [hangar] = await db
+    .select()
+    .from(buildings)
+    .where(and(
+      eq(buildings.playerId, playerId),
+      eq(buildings.buildingType, "drone_hangar"),
+      eq(buildings.isBuilt, true)
+    ))
+    .limit(1);
+  
+  if (hangar) {
+    return hangar.isPowered; // Return actual isPowered value
+  }
+  
+  // Also check stationModules if no building found
+  const [module] = await db
+    .select()
+    .from(stationModules)
+    .where(and(
+      eq(stationModules.playerId, playerId),
+      eq(stationModules.moduleType, "drone_hangar"),
+      eq(stationModules.isBuilt, true)
+    ))
+    .limit(1);
+  
+  return module ? module.isPowered : true; // Default to true if neither exists
 }
 
 async function completeMission(missionId: string, playerId: string) {

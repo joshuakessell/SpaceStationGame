@@ -4,6 +4,7 @@ import {
   users, 
   players, 
   buildings,
+  stationModules,
   resourceNodes,
   drones,
   missions,
@@ -11,12 +12,17 @@ import {
   DRONE_UPGRADE_CONFIG,
   ARRAY_UPGRADE_CONFIG,
   ARRAY_TIERS,
+  POWER_MODULE_TIERS,
+  CENTRAL_HUB_CONFIG,
+  BUILDING_POWER_COSTS,
   type User, 
   type UpsertUser,
   type Player,
   type InsertPlayer,
   type Building,
   type InsertBuilding,
+  type StationModule,
+  type InsertStationModule,
   type ResourceNode,
   type InsertResourceNode,
   type Drone,
@@ -88,6 +94,11 @@ export interface IStorage {
   completeArrayUpgrade(arrayId: string): Promise<void>;
   getAllActiveRifts(): Promise<ResourceNode[]>;
   getAllDeployedArrays(): Promise<ExtractionArray[]>;
+
+  // Power system operations (Phase 5)
+  upgradeCentralHub(playerId: string, targetLevel: number): Promise<void>;
+  calculatePowerBudget(playerId: string): Promise<{ generation: number; consumption: number; available: number }>;
+  enforcePowerLimits(playerId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -625,6 +636,164 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(extractionArrays)
       .where(eq(extractionArrays.status, 'deployed'));
+  }
+
+  async upgradeCentralHub(playerId: string, targetLevel: number): Promise<void> {
+    return await db.transaction(async (tx) => {
+      const [player] = await tx
+        .select()
+        .from(players)
+        .where(eq(players.id, playerId))
+        .for('update');
+
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      if (targetLevel !== player.hubLevel + 1) {
+        throw new Error(`Can only upgrade to next level. Current: ${player.hubLevel}, Target: ${targetLevel}`);
+      }
+
+      if (targetLevel > CENTRAL_HUB_CONFIG.maxLevel) {
+        throw new Error(`Target level ${targetLevel} exceeds max level ${CENTRAL_HUB_CONFIG.maxLevel}`);
+      }
+
+      const upgradeCostConfig = CENTRAL_HUB_CONFIG.upgradeCosts.find(c => c.level === targetLevel);
+      if (!upgradeCostConfig) {
+        throw new Error(`No upgrade cost configuration found for level ${targetLevel}`);
+      }
+
+      const requiredMetal = upgradeCostConfig.metal || 0;
+      const requiredCredits = upgradeCostConfig.credits || 0;
+      const requiredCrystals = upgradeCostConfig.crystals || 0;
+
+      if (player.metal < requiredMetal) {
+        throw new Error(`Insufficient metal. Required: ${requiredMetal}, Available: ${player.metal}`);
+      }
+      if (player.credits < requiredCredits) {
+        throw new Error(`Insufficient credits. Required: ${requiredCredits}, Available: ${player.credits}`);
+      }
+      if (player.crystals < requiredCrystals) {
+        throw new Error(`Insufficient crystals. Required: ${requiredCrystals}, Available: ${player.crystals}`);
+      }
+
+      await tx
+        .update(players)
+        .set({
+          hubLevel: targetLevel,
+          metal: player.metal - requiredMetal,
+          credits: player.credits - requiredCredits,
+          crystals: player.crystals - requiredCrystals,
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(players.id, playerId));
+    });
+  }
+
+  async calculatePowerBudget(playerId: string): Promise<{ generation: number; consumption: number; available: number }> {
+    const powerModules = await db
+      .select()
+      .from(stationModules)
+      .where(
+        and(
+          eq(stationModules.playerId, playerId),
+          eq(stationModules.moduleType, 'power_module'),
+          eq(stationModules.isBuilt, true)
+        )
+      );
+
+    const generation = powerModules.reduce((sum, module) => {
+      return sum + (module.powerOutput || 0);
+    }, 0);
+
+    const allBuiltModules = await db
+      .select()
+      .from(stationModules)
+      .where(
+        and(
+          eq(stationModules.playerId, playerId),
+          eq(stationModules.isBuilt, true)
+        )
+      );
+
+    const allBuiltBuildings = await db
+      .select()
+      .from(buildings)
+      .where(
+        and(
+          eq(buildings.playerId, playerId),
+          eq(buildings.isBuilt, true)
+        )
+      );
+
+    let consumption = allBuiltModules.reduce((sum, module) => {
+      const moduleType = module.moduleType as keyof typeof BUILDING_POWER_COSTS;
+      const powerCost = BUILDING_POWER_COSTS[moduleType] || 0;
+      return sum + powerCost;
+    }, 0);
+
+    consumption += allBuiltBuildings.reduce((sum, building) => {
+      const buildingType = building.buildingType as keyof typeof BUILDING_POWER_COSTS;
+      const powerCost = BUILDING_POWER_COSTS[buildingType] || 0;
+      return sum + powerCost;
+    }, 0);
+
+    return {
+      generation,
+      consumption,
+      available: generation - consumption,
+    };
+  }
+
+  async enforcePowerLimits(playerId: string): Promise<void> {
+    const budget = await this.calculatePowerBudget(playerId);
+    
+    if (budget.available < 0) {
+      // Power deficit: disable all non-power-module buildings in stationModules
+      await db
+        .update(stationModules)
+        .set({ isPowered: false })
+        .where(
+          and(
+            eq(stationModules.playerId, playerId),
+            eq(stationModules.isBuilt, true),
+            ne(stationModules.moduleType, 'power_module')
+          )
+        );
+      
+      // Power deficit: disable all buildings in buildings table
+      await db
+        .update(buildings)
+        .set({ isPowered: false })
+        .where(
+          and(
+            eq(buildings.playerId, playerId),
+            eq(buildings.isBuilt, true)
+          )
+        );
+    } else {
+      // Power surplus: re-enable all buildings in stationModules
+      await db
+        .update(stationModules)
+        .set({ isPowered: true })
+        .where(
+          and(
+            eq(stationModules.playerId, playerId),
+            eq(stationModules.isBuilt, true)
+          )
+        );
+      
+      // Power surplus: re-enable all buildings in buildings table
+      await db
+        .update(buildings)
+        .set({ isPowered: true })
+        .where(
+          and(
+            eq(buildings.playerId, playerId),
+            eq(buildings.isBuilt, true)
+          )
+        );
+    }
   }
 }
 

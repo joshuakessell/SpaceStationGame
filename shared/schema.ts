@@ -78,6 +78,7 @@ export const stationModules = pgTable("station_modules", {
   powerTier: integer("power_tier"), // 1=Solar, 2=Fusion, 3=Antimatter, 4=Quantum, 5=Dark
   powerOutput: integer("power_output").default(0),
   powerCost: integer("power_cost").default(0),
+  isPowered: boolean("is_powered").notNull().default(true), // Phase 5.4: Power enforcement
   // Position & state
   positionX: real("position_x").notNull(),
   positionY: real("position_y").notNull(),
@@ -110,6 +111,7 @@ export const buildings = pgTable("buildings", {
   positionY: real("position_y").notNull(),
   isBuilt: boolean("is_built").notNull().default(false),
   isBuilding: boolean("is_building").notNull().default(false),
+  isPowered: boolean("is_powered").notNull().default(true),
   currentStorage: real("current_storage").default(0),
   maxStorage: integer("max_storage"),
   productionRate: integer("production_rate"),
@@ -182,6 +184,93 @@ export const ARRAY_UPGRADE_CONFIG = {
   costMultiplier: 1.5,  // Costs scale by 1.5x per level
   upgradeDuration: 60,  // 60 seconds per upgrade
 };
+
+// ============================================================================
+// POWER SYSTEM (Phase 5)
+// ============================================================================
+
+// Power module tiers configuration
+export const POWER_MODULE_TIERS = [
+  {
+    tier: 1,
+    name: "Solar Array",
+    powerOutput: 5,
+    buildCost: { metal: 50, credits: 0 },
+    requiredHubLevel: 2,
+    buildTime: 30, // seconds
+  },
+  {
+    tier: 2,
+    name: "Fusion Reactor",
+    powerOutput: 15,
+    buildCost: { metal: 200, crystals: 50 },
+    requiredHubLevel: 4,
+    buildTime: 60,
+  },
+  {
+    tier: 3,
+    name: "Antimatter Generator",
+    powerOutput: 40,
+    buildCost: { metal: 500, crystals: 200 },
+    requiredHubLevel: 6,
+    buildTime: 90,
+  },
+  {
+    tier: 4,
+    name: "Quantum Core",
+    powerOutput: 100,
+    buildCost: { metal: 1500, crystals: 800 },
+    requiredHubLevel: 8,
+    buildTime: 120,
+  },
+  {
+    tier: 5,
+    name: "Dark Singularity",
+    powerOutput: 250,
+    buildCost: { metal: 5000, crystals: 3000 },
+    requiredHubLevel: 10,
+    buildTime: 180,
+  },
+] as const;
+
+// Central Hub upgrade configuration
+export const CENTRAL_HUB_CONFIG = {
+  maxLevel: 10,
+  upgradeCosts: [
+    { level: 2, metal: 100, credits: 50 },
+    { level: 3, metal: 250, credits: 100 },
+    { level: 4, metal: 500, crystals: 100, credits: 150 },
+    { level: 5, metal: 1000, crystals: 200, credits: 250 },
+    { level: 6, metal: 2000, crystals: 500, credits: 400 },
+    { level: 7, metal: 3500, crystals: 1000, credits: 600 },
+    { level: 8, metal: 6000, crystals: 2000, credits: 1000 },
+    { level: 9, metal: 10000, crystals: 4000, credits: 1500 },
+    { level: 10, metal: 15000, crystals: 6000, credits: 2500 },
+  ],
+  upgradeDurations: [
+    { level: 2, seconds: 60 },
+    { level: 3, seconds: 90 },
+    { level: 4, seconds: 120 },
+    { level: 5, seconds: 180 },
+    { level: 6, seconds: 240 },
+    { level: 7, seconds: 300 },
+    { level: 8, seconds: 420 },
+    { level: 9, seconds: 600 },
+    { level: 10, seconds: 900 },
+  ],
+} as const;
+
+// Building power consumption by type
+export const BUILDING_POWER_COSTS = {
+  command_core: 0, // Central Hub doesn't consume power
+  scanner_array: 2,
+  drone_hangar: 3,
+  rift_scanner: 5,
+  array_bay: 4,
+  research_bay: 10, // Phase 6
+  shipyard: 15, // Phase 7
+  power_module: 0, // Power modules don't consume power
+} as const;
 
 // Resource nodes: asteroid clusters and crystal rifts
 export const resourceNodes = pgTable("resource_nodes", {
