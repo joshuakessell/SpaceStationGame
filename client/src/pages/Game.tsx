@@ -52,7 +52,7 @@ export default function Game() {
   // Update player mutation
   const updatePlayerMutation = useMutation({
     mutationFn: async (updates: Partial<Player>) => {
-      return await apiRequest("/api/player", "PATCH", updates);
+      return await apiRequest("PATCH", "/api/player", updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/player"] });
@@ -74,7 +74,7 @@ export default function Game() {
   // Create building mutation
   const createBuildingMutation = useMutation({
     mutationFn: async (buildingData: any) => {
-      return await apiRequest("/api/buildings", "POST", buildingData);
+      return await apiRequest("POST", "/api/buildings", buildingData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/buildings"] });
@@ -97,7 +97,7 @@ export default function Game() {
   // Update building mutation
   const updateBuildingMutation = useMutation({
     mutationFn: async ({ id, updates }: { id: string; updates: Partial<Building> }) => {
-      return await apiRequest(`/api/buildings/${id}`, "PATCH", updates);
+      return await apiRequest("PATCH", `/api/buildings/${id}`, updates);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/buildings"] });
@@ -107,7 +107,7 @@ export default function Game() {
   // Collect resource mutation
   const collectResourceMutation = useMutation({
     mutationFn: async (buildingId: string) => {
-      return await apiRequest(`/api/buildings/${buildingId}/collect`, "POST");
+      return await apiRequest("POST", `/api/buildings/${buildingId}/collect`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/buildings"] });
@@ -224,7 +224,11 @@ export default function Game() {
 
     // Simulate building completion
     setTimeout(async () => {
-      const newBuilding = buildings.find((b) => b.buildingType === buildingId);
+      // Refetch buildings to get the newly created one
+      await queryClient.refetchQueries({ queryKey: ["/api/buildings"] });
+      const updatedBuildings = queryClient.getQueryData<Building[]>(["/api/buildings"]);
+      const newBuilding = updatedBuildings?.find((b) => b.buildingType === buildingId && b.isBuilding);
+      
       if (newBuilding) {
         await updateBuildingMutation.mutateAsync({
           id: newBuilding.id,
@@ -235,11 +239,12 @@ export default function Game() {
           },
         });
 
-        if (tutorialStep === "build_command") {
+        const currentTutorialStep = queryClient.getQueryData<Player>(["/api/player"])?.tutorialStep;
+        if (currentTutorialStep === "build_command") {
           await updatePlayerMutation.mutateAsync({ tutorialStep: "command_building" });
-        } else if (tutorialStep === "build_mine") {
+        } else if (currentTutorialStep === "build_mine") {
           await updatePlayerMutation.mutateAsync({ tutorialStep: "mine_building" });
-        } else if (tutorialStep === "build_crystal") {
+        } else if (currentTutorialStep === "build_crystal") {
           await updatePlayerMutation.mutateAsync({ tutorialStep: "crystal_building" });
         }
       }
@@ -300,6 +305,7 @@ export default function Game() {
     description: b.buildingType === "command" ? "Command Center" : b.buildingType === "mine" ? "Ore Mine" : "Crystal Synthesizer",
     resourceType: (b.resourceType === "metal" || b.resourceType === "crystals") ? b.resourceType as "metal" | "crystal" : undefined,
     currentStorage: b.currentStorage || undefined,
+    maxStorage: b.maxStorage || undefined,
   }));
 
   const selectedBuildingData = buildingsData.find((b) => b.id === selectedBuilding);

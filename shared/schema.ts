@@ -67,6 +67,13 @@ export const insertPlayerSchema = createInsertSchema(players).omit({
 export const insertBuildingSchema = createInsertSchema(buildings).omit({
   id: true,
   createdAt: true,
+}).extend({
+  buildStartedAt: z.union([z.date(), z.string()]).transform(val => 
+    typeof val === 'string' ? new Date(val) : val
+  ).optional(),
+  lastCollectedAt: z.union([z.date(), z.string()]).transform(val => 
+    typeof val === 'string' ? new Date(val) : val
+  ).optional(),
 });
 
 export const updatePlayerSchema = z.object({
@@ -85,7 +92,9 @@ export const updateBuildingSchema = z.object({
   isBuilt: z.boolean().optional(),
   isBuilding: z.boolean().optional(),
   level: z.number().optional(),
-  lastCollectedAt: z.date().optional(),
+  lastCollectedAt: z.union([z.date(), z.string()]).transform(val => 
+    typeof val === 'string' ? new Date(val) : val
+  ).optional(),
 });
 
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
