@@ -1,0 +1,591 @@
+Resource extraction will become one of the main progression systems in Space Base Showdown. It ties together scouting, logistics, manufacturing, and idle income. This section defines how players find, harvest, deliver, and manage resources at scale.
+
+This expands and partially replaces the earlier description of passive Ore Mine and Crystal Synthesizer. Iron and Crystal are no longer only generated passively by buildings. They are primarily harvested through missions in space using mining drones and related infrastructure.
+
+We will refer to the player’s home base in space as the Star Base.
+
+We will refer to the player’s world/base screen view as Base View.
+
+We will refer to the player’s resource management panel as the Resource Console.
+
+We will refer to the player's current system as the Home System. The player starts with one system and one Star Base. Later versions can introduce multiple systems.
+
+We will define two major resource loops
+
+1. Iron Harvesting via Asteroid Mining Drones
+2. Crystal Harvesting via Rift Extraction Arrays
+
+Each of these systems uses similar patterns so the player learns one loop and applies it to others. Each has its own set of upgrade levers so late game does not become flat or repetitive.
+
+SECTION 1. IRON MINING LOOP
+
+1.1 Purpose of Iron
+Iron is the basic structural material. It is required to:
+
+* Construct and upgrade most buildings
+* Train and upgrade mechanical or armored units (for example Assault Bots and Star Defenders)
+* Upgrade storage
+* Upgrade the Star Base itself
+
+Iron comes from asteroid clusters found in orbit or in nearby belts around the Star Base in the Home System. Iron is finite per cluster. When a cluster is depleted it cannot be harvested again.
+
+1.2 Required Infrastructure
+To mine Iron, the player must build and upgrade the following in Base View:
+
+1. Star Base (Command Center in space form)
+
+   * Represents the player’s orbital operations hub.
+   * Houses the Scanner module and Hangar module.
+   * Upgrading the Star Base improves scanner range and allows more total active mining drones at once.
+
+2. Scanner Array
+
+   * A sub-building or module of the Star Base.
+   * Function
+
+     * Scans for asteroid clusters that contain Iron and other basic minerals.
+     * Determines how many clusters are visible in the Home System.
+     * Determines the scan radius in distance units within the system.
+   * Upgrading the Scanner Array yields
+
+     * Larger scan radius
+     * Higher quality scan detail (you see exact Iron quantity remaining in each cluster rather than just “high / medium / low”)
+     * Ability to discover rare cluster types earlier (for example “Dense Iron Core” that contains high Iron but is farther away)
+
+3. Drone Hangar
+
+   * A buildable structure that constructs and houses Mining Drones.
+   * Function
+
+     * Builds new Mining Drones
+     * Repairs damaged drones
+     * Sets global behavior defaults for mining trips (for example “prioritize nearby low-yield clusters” vs “prioritize far high-yield clusters”)
+   * Upgrading the Drone Hangar yields
+
+     * Higher maximum drone count
+     * Faster drone construction time
+     * Unlocks advanced drone chassis that have better speed, cargo capacity, durability
+
+4. Iron Storage
+
+   * Storage silos or cargo bays for refined Iron at the Star Base.
+   * Function
+
+     * Sets the cap on how much Iron you can hold at once across your empire
+   * Upgrading Iron Storage increases maximum Iron cap so the player can queue expensive upgrades without hitting a ceiling
+
+Note for implementation
+Scanner Array, Drone Hangar, and Iron Storage can be separate buildings on the base surface for visual clarity, but functionally they are logistical modules of the Star Base. In UI they can be grouped under “Star Base Operations.”
+
+1.3 Discovery Phase. Scanning for Asteroid Clusters
+The Iron loop begins with scanning.
+
+Process
+
+1. The player opens the Star Map view from Base View by clicking a button on the Star Base building. This opens a modal overlay on top of the base.
+2. The Star Map shows the Home System. Visually the map is a stylized 2D diagram of the local space around the Star Base. Objects include
+
+   * The Star Base orbit node in the center
+   * Rings or orbital bands representing asteroid belts
+   * Scan arcs drawn around the base showing scanner range
+   * Markers for discovered resource clusters
+3. The player presses “Scan for Clusters.”
+4. The Scanner Array rolls a scan. The scan consumes no resources in the first version. Later versions may require Energy or time.
+5. The scan populates a list of asteroid clusters. Each cluster entry shows
+
+   * Cluster Name
+
+     * Example “Belt Segment A7” or “Shattered Iron Node”
+   * Distance from Star Base
+
+     * Short Range
+     * Mid Range
+     * Deep Range
+   * Estimated Iron Yield
+
+     * A numeric estimate like 1,200 units of Iron total if Scanner is upgraded enough
+     * Or a tier label like “High Yield,” “Medium Yield,” “Low Yield” if Scanner is low level
+   * Stability / Remaining Integrity
+
+     * Indicates how long the cluster will last under mining. High stability means you can mine it for several trips. Low stability means it will be depleted soon.
+
+Distance matters
+
+* Short Range clusters take less round trip time for drones.
+* Deep Range clusters take longer but may have much higher Iron yield.
+
+Finite resource
+Each cluster has a finite Iron pool. Each drone trip will subtract from that pool. When pool hits zero, the cluster marker becomes “Depleted.” Depleted clusters remain on the map but cannot be mined again. This gives players a reason to upgrade scanning and push farther out to new clusters over time instead of just camping one infinite node. This is important for long term progression and pacing.
+
+Scanner upgrades
+
+* At Scanner level 1
+
+  * Player sees at most 2 clusters in Short Range only
+  * Yield shown as Low / Medium / High, not exact numbers
+  * No Deep Range
+* At Scanner level 2
+
+  * Player sees Short and Mid Range clusters
+  * Up to 4 clusters
+  * Approximate total Iron per cluster is visible
+* At Scanner level 3
+
+  * Player sees Deep Range clusters
+  * Up to 6 clusters
+  * Exact Iron per cluster is visible
+  * Can detect rare nodes with bonus modifiers (for example “Rich Iron Vein 150 percent output but in Deep Range”)
+
+1.4 Extraction Phase. Sending Mining Drones
+Once clusters are discovered, the player can assign Mining Drones.
+
+Mining Drones
+
+* Mining Drones are small autonomous ships built in the Drone Hangar.
+* Each drone has these stats
+
+  * Travel Speed (distance per second)
+  * Cargo Capacity (how much Iron it can carry before returning)
+  * Harvest Rate (how fast it extracts Iron once on site)
+  * Durability (not used in first version since no combat yet, but can be reserved for later hazards)
+
+Trip Lifecycle for each drone
+
+1. Departing
+
+   * Drone leaves the Star Base and travels to the chosen cluster.
+   * State: Traveling to Cluster
+   * Travel time is based on Distance class (Short, Mid, Deep) and the drone’s Travel Speed stat.
+
+2. Mining
+
+   * Once it arrives, the drone switches to extraction mode.
+   * State: Mining Cluster
+   * It extracts Iron at its Harvest Rate, filling its cargo hold.
+   * This depletes the cluster’s Iron pool.
+   * Mining continues until
+
+     * The drone cargo hold is full
+     * Or the cluster is fully depleted
+     * Or the player manually recalls the drone
+
+3. Returning
+
+   * Drone leaves the cluster and returns to the Star Base.
+   * State: Returning to Base
+   * Travel time again based on distance and speed.
+   * When it docks, the Iron in its cargo is added to the player’s Iron total (up to Iron Storage cap).
+   * After offload, the drone is idle and ready for a new assignment.
+
+Multiple drones can be assigned to the same cluster. This speeds up extraction but will deplete the cluster faster. This creates a strategic tradeoff
+
+* Do you strip-mine a rich nearby node quickly to get Iron right now
+* Or do you distribute drones across several nodes to sustain supply longer
+
+Drone assignment UI
+
+* From the Star Map, clicking on a cluster opens a Cluster Detail panel.
+* This panel shows
+
+  * Cluster name
+  * Distance class
+  * Total Iron remaining in cluster
+  * Your active drones assigned to this cluster with their current states
+* The player can press “Assign Drone” to send an idle drone from the Drone Hangar.
+* The UI should confirm travel time, expected Iron per trip (cargo capacity), and estimated return time.
+
+Idle vs queued behavior
+If no cluster is assigned to a drone, it sits Idle at the Hangar.
+Later upgrades could unlock Auto Assignment policies for drones, but first version will require manual assignment for clarity.
+
+1.5 Monitoring Phase. Resource Console and Mining Overview
+The player needs a clear and always-available way to monitor extraction. This is handled by the Resource Console.
+
+Resource Console UI
+
+* In Base View, on the right side of the screen there is a collapsible (expandable) control panel.
+* Clicking it expands a slide-out panel that shows all currently known and unlocked resources.
+
+  * For now:
+
+    * Iron
+    * Crystal (described later)
+    * Optional future resources like Fuel, Exotic Gas, Quantum Dust, etc. All will eventually use similar tracking logic.
+* Each resource row in this panel shows
+
+  * Current owned amount of that resource
+  * Current storage capacity of that resource
+  * Current net income rate per minute (rolling average across all mining operations for that resource)
+
+Clicking Iron in the Resource Console
+
+* Opens an Iron Detail sub-panel (still inside the slide-out).
+* This panel shows a table of all active Mining Drones currently working on Iron-related tasks.
+* For each drone, display
+
+  * Drone ID or name (for example “Drone A-01”)
+  * Current State
+
+    * Traveling to Cluster
+    * Mining Cluster
+    * Returning to Base
+    * Idle
+  * Target Cluster name
+  * Load (current cargo vs cargo capacity)
+  * ETA
+
+    * For Traveling to Cluster
+
+      * time until arrival
+    * For Mining Cluster
+
+      * time until cargo full
+    * For Returning to Base
+
+      * time until delivery
+* At the bottom of the Iron Detail panel show
+
+  * Total drones currently assigned to Iron
+  * Total Iron expected in next 5 minutes based on active trips
+  * Total remaining Iron in all known clusters
+
+Player can also jump from here to Star Map by pressing “Manage Clusters” or “Reassign Drones.”
+
+This interface replaces the very simple passive Ore Mine building loop. Iron is not magic. The player now sees and manages real logistics with distance, finite reserves, and fleet behavior.
+
+1.6 Drone Upgrades
+The Drone Hangar upgrade path provides long term scaling.
+
+Key upgrade levers
+
+1. Travel Speed upgrade
+
+   * Faster trips mean faster turnaround, higher Iron per hour
+   * This makes mid and deep range clusters viable earlier in the game
+
+2. Cargo Capacity upgrade
+
+   * Larger cargo means each round trip brings more Iron
+   * This reduces how often drones need to fly back and forth
+   * This also means fewer UI interrupts in late game since drones are more efficient
+
+3. Mining Laser upgrade (Harvest Rate)
+
+   * Improves how fast drones fill their cargo while at the cluster
+   * This matters most when cluster yield is high but far away. You get in, extract quickly, leave
+
+4. Fleet Size upgrade
+
+   * Drone Hangar level increases max active drones
+   * Also may unlock new drone chassis tiers
+
+     * Tier 1 “Basic Miner”
+
+       * slow speed, low cargo
+     * Tier 2 “Hauler”
+
+       * slow speed, huge cargo
+     * Tier 3 “Skimmer”
+
+       * very fast, low cargo, good for short range quick grabs
+     * Tier 4 “Heavy Extractor” (late game)
+
+       * high cargo, high harvest, but expensive to build
+
+Players will unlock these over time. Some upgrades consume Iron. Some consume Crystal. Some consume time. This creates cross-dependence between resource loops. You need Crystal to upgrade Iron efficiency and vice versa.
+
+1.7 Cluster Life Cycle
+Clusters are intentionally exhaustible.
+
+States for clusters
+
+* Unscanned (not visible yet)
+* Scanned / Available (has Iron, can assign drones)
+* Depleting (below 20 percent remaining, UI should glow yellow or orange to warn player it is almost gone)
+* Depleted (0 remaining, cannot mine anymore)
+
+When a cluster is Depleted
+
+* Any drone en route will detect that state and auto-return with whatever partial cargo it picked up
+* The cluster greys out on the Star Map
+* The Resource Console will remove it from “active yield calculation”
+* The player will eventually have to rescan to find new clusters
+
+This gives a reason to constantly upgrade Scanner and push to Mid and Deep Range as the early clusters dry up.
+
+1.8 Summary of Iron Mining Loop
+
+* Player scans using Scanner Array
+* Clusters appear with distance, yield, and total finite Iron
+* Player assigns Mining Drones from Drone Hangar to those clusters
+* Drones cycle through Traveling to Cluster, Mining Cluster, Returning to Base
+* Player tracks this in the Resource Console under Iron
+* Iron fills Star Base storage and is then spent on upgrades and unit progression
+* Scanner, Hangar, and Drones can all be upgraded to improve discovery, throughput, and efficiency over time
+* Clusters deplete, forcing expansion and tech advancement
+
+SECTION 2. CRYSTAL EXTRACTION LOOP
+
+Crystal (the high value tech resource) is intentionally similar to Iron but not identical. Crystal should feel rarer, more exotic, and more complex to gather. It should also introduce different upgrade levers so the late game does not become a pure “faster drone” race.
+
+2.1 Purpose of Crystal
+Crystal is used for
+
+* High tier research in the Tech Lab
+* Unlocking advanced unit types like Nova Mage or other ability-based units
+* Upgrading shields, energy weapons, or global tech passives
+* Late game Star Base upgrades and certain Drone Hangar improvements
+
+Crystal is less common than Iron and not usually found in generic asteroid rock. Instead, Crystal forms in unstable spatial anomalies. We will call these Crystal Rifts.
+
+2.2 Crystal Rifts
+A Crystal Rift is an energy tear in space near the Star Base’s region of space. It appears like a glowing fracture or crack in reality. Lore wise, the Rift is tapping subspace or exotic matter. Mechanically, it is a node that can be harvested for Crystal.
+
+Important differences from asteroid clusters
+
+* Rifts are unstable. They slowly collapse over time whether you are harvesting them or not. So time pressure matters.
+* Rifts regenerate Crystal slowly while active. You can siphon energy from them at a controlled rate. If you overdraw with too many extractors you can cause instability spikes that collapse the Rift early.
+* You do not send Mining Drones to land and dig. Instead you deploy Extraction Arrays, which are remote siphon platforms that park near a Rift and beam Crystal back to your Star Base.
+
+2.3 Required Infrastructure for Crystal
+To extract Crystal, the player must build and upgrade the following structures at Base View:
+
+1. Rift Scanner Module
+
+   * This is a specialized upgrade to the Scanner Array
+   * It unlocks the ability to detect Crystal Rifts in the system
+   * Upgrading it increases the maximum number of simultaneous active Rifts you can track and harvest from
+   * It also increases Rift Stability Readout accuracy (better prediction of when a Rift will collapse)
+
+2. Extraction Array Bay
+
+   * A structure at the Star Base that builds and launches Extraction Arrays
+   * An Extraction Array is a semi-permanent platform, not a shuttle drone
+   * Function of the Bay
+
+     * Construct new Extraction Arrays
+     * Upgrade existing Arrays
+     * Recall Arrays if needed
+   * Upgrading the Bay
+
+     * Allows more simultaneous Arrays in the field
+     * Reduces build time for new Arrays
+     * Unlocks advanced Array modules
+
+3. Crystal Refinery
+
+   * A base structure that processes raw Rift energy into usable Crystal
+   * Function
+
+     * Sets conversion efficiency. For example, an early Refinery might convert 50 percent of harvested Rift energy into Crystal. A higher level Refinery might convert 75 percent
+   * Upgrading the Refinery boosts conversion efficiency and increases Crystal storage capacity
+   * The Refinery also gates high tier research. Certain research requires Refinery level X
+
+Note for clarity
+The Scanner Array and Rift Scanner Module can be represented as one physical building in art with upgrade paths. The Extraction Array Bay and Drone Hangar are parallel concepts. Drone Hangar builds Mining Drones for Iron. Extraction Array Bay builds Extraction Arrays for Crystal.
+
+2.4 Discovery of Crystal Rifts
+The player uses the Rift Scanner to find Rifts, similar to asteroid scanning but with different behavior.
+
+Process
+
+1. Player opens Star Map.
+2. A separate filter or tab shows “Rifts.”
+3. Player presses “Scan for Rifts.”
+4. The Rift Scanner attempts to locate 1 or more Crystal Rifts.
+
+   * Early game. Usually 1 Rift appears.
+   * Mid game. 2 to 3 Rifts may appear if unlocked.
+5. Each Rift entry in the list shows
+
+   * Rift Name
+
+     * Example “Rift Sigma-3”
+   * Stability (High, Medium, Low). High means it will last longer before collapsing. Low means it is about to implode.
+   * Energy Output Rating (for example 40 energy per minute). This is basically the potential Crystal output rate before conversion efficiency
+   * Distance from Star Base
+
+     * Short Range Rifts yield less but are safer
+     * Farther Rifts might have higher output but are more unstable
+
+Key difference vs asteroids
+Asteroid clusters are finite Iron pools that you empty with repeated trips.
+Crystal Rifts act like volatile wells that stream Crystal per minute while the Rift exists. The Rift runs down on a stability timer, not on a fixed volume pool.
+
+2.5 Deployment of Extraction Arrays
+Instead of sending Mining Drones on recurring trips, the player sends Extraction Arrays. An Array is deployed and then sits there pulling energy until recalled or until the Rift collapses.
+
+Extraction Array stats
+
+* Uplink Strength
+
+  * Controls how much energy per minute the Array can pull from the Rift
+* Beam Stability
+
+  * Controls how much instability stress it adds to the Rift
+  * Low Beam Stability means the Rift collapses faster
+* Telemetry Range
+
+  * Limits maximum operational distance (an Array with poor range cannot deploy to Deep Range Rifts)
+* Transfer Rate
+
+  * Controls how fast harvested energy is transmitted back to the Star Base and processed into Crystal
+* Durability
+
+  * Reserved for later combat features
+
+Array lifecycle
+
+1. Deploy
+
+   * Player selects a Rift on the Star Map and presses “Deploy Array.”
+   * The game checks if the player has an idle Array in the Bay. If not, prompt to build one.
+   * Once deployed, the Array moves to the Rift location. Travel time is instant or near instant in first version for simplicity.
+   * State: Anchoring
+
+2. Online
+
+   * Once anchored, the Array begins siphoning.
+   * State: Harvesting Rift
+   * The Array generates Raw Energy per minute, up to its Uplink Strength.
+   * The player’s Crystal Refinery converts that incoming energy into Crystal per minute using its efficiency.
+   * This Crystal per minute is added continuously to the player’s Crystal total (subject to storage cap).
+   * The Rift Stability decays while harvesting. Decay rate depends on
+
+     * Base Rift Stability
+     * Array Beam Stability
+     * Number of Arrays on that same Rift (stacking Arrays increases stress)
+
+3. Collapse
+
+   * When Rift Stability hits zero the Rift collapses.
+   * The Array automatically returns to idle at the Star Base (no damage or loss in first version).
+   * The Rift disappears from the map and will not re-open.
+   * The player keeps all Crystal gathered up to that point.
+
+2.6 Risk vs reward in Crystal extraction
+Iron is throughput limited by distance and drone fleet management.
+Crystal is throughput limited by Rift lifetime and stability control.
+
+Player choices when extracting Crystal
+
+* Do you deploy one high tier Array that siphons at full speed but burns the Rift down fast
+* Or do you deploy a weaker Array to stretch the Rift lifetime for a longer trickle income
+* Or do you wait and scan again for a higher Stability Rift so you get higher total Crystal before collapse
+
+In late game the player will unlock upgrades that let them influence these levers.
+
+2.7 Crystal Control Upgrades
+There are multiple upgrade paths to scale Crystal production. They are not the same as drone upgrades, which keeps the loops distinct.
+
+Key upgrade levers
+
+1. Array Uplink upgrades
+
+   * Increases raw energy per minute drawn
+   * Yields more Crystal per minute
+   * Also increases Rift stress unless you also upgrade Stability
+
+2. Beam Stability upgrades
+
+   * Improves stability control so the Array draws efficiently without tearing the Rift apart too fast
+   * Makes Rifts last longer under load
+   * Lets you safely run multiple Arrays on a single Rift without instant collapse
+
+3. Telemetry Range upgrades
+
+   * Allows Arrays to deploy to more distant Rifts found by higher tier Rift Scanner levels
+   * This unlocks rare high output Rifts that sit farther away from your Star Base
+
+4. Refinery Efficiency upgrades
+
+   * The Crystal Refinery converts raw energy into usable Crystal
+   * A higher level Refinery wastes less energy
+   * This is effectively a multiplier to all Crystal income
+   * Also increases Crystal storage cap
+
+5. Rift Scanner upgrades
+
+   * Higher level Rift Scanner improves the quality of located Rifts
+
+     * Better baseline Stability
+     * Higher Energy Output
+   * In other words, scanning itself becomes a form of farming improvement
+   * Also increases max concurrent active Rifts
+
+2.8 Crystal Monitoring in the Resource Console
+Crystal tracking works just like Iron tracking in the Resource Console so the user has a single mental model.
+
+In Base View the player opens the Resource Console on the right side.
+
+The Console shows Crystal as one of the tracked resources.
+
+Clicking Crystal opens a Crystal Detail sub-panel. The panel includes
+
+* Total Crystal owned
+* Max Crystal storage cap
+* Net Crystal income per minute
+* Active Rifts list
+
+  * For each active Rift, display
+
+    * Rift Name
+    * Stability percent remaining (with color: green above 60 percent, yellow between 20 and 60 percent, red below 20 percent)
+    * Crystal income per minute from that Rift
+    * Number of Arrays currently deployed to that Rift
+* Active Arrays list
+
+  * For each Extraction Array
+
+    * Array ID
+    * State
+
+      * Anchoring
+      * Harvesting Rift
+      * Returning
+      * Idle in Bay
+    * Target Rift name
+    * Uplink Strength stat
+    * Beam Stability stat
+    * Estimated collapse time of the Rift if this Array keeps running at current power
+
+The player can from this panel
+
+* Recall an Array early (for example, to save a Rift for later if they are about to log off and want to stretch it)
+* Redeploy an idle Array to a different Rift
+* Jump to the Star Map Rifts view for that Rift
+
+This makes Crystal not just a number but an active system with its own dashboards and tuning.
+
+2.9 Comparison of Iron loop vs Crystal loop
+Iron loop
+
+* Scan for asteroid clusters
+* Assign Mining Drones
+* Drones operate in repeating trips (travel, mine, return)
+* Clusters have a finite Iron pool and are distance limited
+* Scaling levers are drone speed, cargo, harvest rate, fleet size
+* Strategic tradeoff is throughput vs depletion rate of a limited pool
+
+Crystal loop
+
+* Scan for Rifts
+* Deploy Extraction Arrays
+* Arrays sit on target Rifts and siphon energy continuously
+* Rifts have a stability timer that will collapse regardless
+* Scaling levers are array uplink, beam stability, telemetry range, refinery efficiency, scanner quality
+* Strategic tradeoff is burst extraction vs Rift lifespan, plus choosing which Rifts to exploit now vs later
+
+The loops are intentionally asymmetric. Players must engage with both loops to progress because Iron and Crystal feed different upgrade tracks. Iron feeds physical infrastructure and unit armor. Crystal feeds research, shields, magic/energy style units, and global tech buffs.
+
+Both loops feed the Resource Console and both loops are visible, tracked, forecasted, and optimized by the player.
+
+This depth creates long term engagement, sets up late game tension (shortage of Crystal, shortage of good Iron clusters), and justifies advanced upgrades, as well as monetization hooks in the future such as instant drone refit, instant Array stabilization, early access to Deep Range scans, and similar accelerants.
+
+This system also scales into future features
+
+* Hazard events like pirate raids on drones in transit
+* Rift anomalies that spawn enemies mid harvest
+* Multi system expansion where the player operates multiple Star Bases and has to route drones and Arrays across systems with travel time between systems rather than just within one system
+
+This mining and extraction model should now be treated as canonical for Space Base Showdown. Future sections (Fuel, Exotic Gas, Quantum Dust, etc.) should mirror this level of specificity.
