@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, ne, gte, sql } from "drizzle-orm";
 import { 
   users, 
   players, 
@@ -42,6 +42,7 @@ export interface IStorage {
   createResourceNode(node: InsertResourceNode): Promise<ResourceNode>;
   updateResourceNode(id: string, updates: Partial<ResourceNode>): Promise<ResourceNode>;
   getResourceNode(id: string): Promise<ResourceNode | undefined>;
+  atomicNodeDecrement(nodeId: string, amount: number): Promise<number>;
 
   // Drone operations
   getPlayerDrones(playerId: string): Promise<Drone[]>;
@@ -51,9 +52,24 @@ export interface IStorage {
 
   // Mission operations
   getPlayerMissions(playerId: string): Promise<Mission[]>;
+  getAllActiveMissions(): Promise<Mission[]>;
   createMission(mission: InsertMission): Promise<Mission>;
   updateMission(id: string, updates: Partial<Mission>): Promise<Mission>;
   getMission(id: string): Promise<Mission | undefined>;
+  atomicMissionStatusUpdate(
+    id: string,
+    fromStatus: string,
+    toStatus: string,
+    additionalUpdates?: Partial<Mission>
+  ): Promise<Mission | null>;
+  atomicCompleteMission(
+    missionId: string,
+    fromStatus: string,
+    playerId: string,
+    nodeId: string,
+    droneId: string,
+    desiredIron: number
+  ): Promise<{ success: boolean; ironCollected: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -145,6 +161,26 @@ export class DatabaseStorage implements IStorage {
     return node;
   }
 
+  async atomicNodeDecrement(nodeId: string, amount: number): Promise<number> {
+    const result = await db.execute(sql`
+      WITH old_value AS (
+        SELECT COALESCE(remaining_iron, 0) as remaining_iron FROM resource_nodes WHERE id = ${nodeId}
+      )
+      UPDATE resource_nodes
+      SET remaining_iron = GREATEST(0, COALESCE(remaining_iron, 0) - ${amount})
+      WHERE id = ${nodeId}
+      RETURNING 
+        remaining_iron,
+        (SELECT LEAST(remaining_iron, ${amount}) FROM old_value) as actual_decrement
+    `);
+    
+    if (result.rows.length === 0) {
+      return 0;
+    }
+    
+    return Number(result.rows[0].actual_decrement);
+  }
+
   // Drone operations
   async getPlayerDrones(playerId: string): Promise<Drone[]> {
     return await db.select().from(drones).where(eq(drones.playerId, playerId));
@@ -174,6 +210,15 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(missions).where(eq(missions.playerId, playerId));
   }
 
+  async getAllActiveMissions(): Promise<Mission[]> {
+    return await db.select().from(missions).where(
+      and(
+        ne(missions.status, "completed"),
+        ne(missions.status, "cancelled")
+      )
+    );
+  }
+
   async createMission(missionData: InsertMission): Promise<Mission> {
     const [mission] = await db.insert(missions).values(missionData).returning();
     return mission;
@@ -191,6 +236,121 @@ export class DatabaseStorage implements IStorage {
   async getMission(id: string): Promise<Mission | undefined> {
     const [mission] = await db.select().from(missions).where(eq(missions.id, id));
     return mission;
+  }
+
+  async atomicMissionStatusUpdate(
+    id: string,
+    fromStatus: string,
+    toStatus: string,
+    additionalUpdates?: Partial<Mission>
+  ): Promise<Mission | null> {
+    const [mission] = await db
+      .update(missions)
+      .set({ 
+        status: toStatus,
+        ...additionalUpdates 
+      })
+      .where(
+        and(
+          eq(missions.id, id),
+          eq(missions.status, fromStatus)
+        )
+      )
+      .returning();
+    
+    return mission || null;
+  }
+
+  async atomicCompleteMission(
+    missionId: string,
+    fromStatus: string,
+    playerId: string,
+    nodeId: string,
+    droneId: string,
+    desiredIron: number
+  ): Promise<{ success: boolean; ironCollected: number }> {
+    return await db.transaction(async (tx) => {
+      // Lock mission row early with SELECT ... FOR UPDATE
+      const lockResult = await tx.execute(sql`
+        SELECT * FROM missions WHERE id = ${missionId} FOR UPDATE
+      `);
+
+      if (lockResult.rows.length === 0) {
+        throw new Error('Mission not found');
+      }
+
+      const mission = lockResult.rows[0] as any;
+
+      // Check status and throw if wrong (this triggers rollback)
+      if (mission.status !== fromStatus) {
+        throw new Error('Mission already completed or invalid status');
+      }
+
+      // Do node decrement
+      const nodeDecrement = await tx.execute(sql`
+        WITH old_value AS (
+          SELECT COALESCE(remaining_iron, 0) as remaining_iron FROM resource_nodes WHERE id = ${nodeId}
+        )
+        UPDATE resource_nodes
+        SET remaining_iron = GREATEST(0, COALESCE(remaining_iron, 0) - ${desiredIron})
+        WHERE id = ${nodeId}
+        RETURNING 
+          remaining_iron,
+          (SELECT LEAST(remaining_iron, ${desiredIron}) FROM old_value) as actual_decrement
+      `);
+
+      const actualIronCollected = nodeDecrement.rows.length > 0 
+        ? Number(nodeDecrement.rows[0].actual_decrement) 
+        : 0;
+
+      // Credit player
+      if (actualIronCollected > 0) {
+        const [player] = await tx
+          .select()
+          .from(players)
+          .where(eq(players.id, playerId));
+
+        if (player) {
+          await tx
+            .update(players)
+            .set({
+              metal: player.metal + actualIronCollected,
+              lastUpdatedAt: new Date(),
+            })
+            .where(eq(players.id, playerId));
+        }
+      }
+
+      // Update drone
+      await tx
+        .update(drones)
+        .set({ status: "idle" })
+        .where(eq(drones.id, droneId));
+
+      // Guarded UPDATE with status check
+      const [updatedMission] = await tx
+        .update(missions)
+        .set({
+          status: "completed",
+          cargoAmount: actualIronCollected,
+          completedAt: new Date(),
+        })
+        .where(
+          and(
+            eq(missions.id, missionId),
+            eq(missions.status, fromStatus)
+          )
+        )
+        .returning();
+
+      // If UPDATE affects 0 rows, THROW an error to trigger rollback
+      if (!updatedMission) {
+        throw new Error('Mission status changed during transaction');
+      }
+
+      // Only return success if UPDATE succeeded
+      return { success: true, ironCollected: actualIronCollected };
+    });
   }
 }
 
