@@ -3,6 +3,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startMissionTickSystem } from "./mission-tick";
 import { startUpgradeTickSystem } from "./upgrade-tick";
+import { startRiftDecayTickSystem } from "./rift-decay-tick";
+import { startArrayExtractionTickSystem } from "./array-extraction-tick";
 
 const app = express();
 
@@ -83,5 +85,9 @@ app.use((req, res, next) => {
     startMissionTickSystem();
     // Start drone upgrade tick system
     startUpgradeTickSystem();
+    // Start rift decay tick system
+    startRiftDecayTickSystem();
+    // Start array extraction tick system
+    startArrayExtractionTickSystem();
   });
 })();

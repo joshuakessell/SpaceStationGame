@@ -1,15 +1,16 @@
 import { storage } from "./storage";
 import { db } from "./db";
-import { drones } from "@shared/schema";
+import { drones, extractionArrays } from "@shared/schema";
 import { lte, and, isNotNull } from "drizzle-orm";
 import { log } from "./vite";
 
 /**
- * Drone Upgrade Tick System
+ * Upgrade Tick System
  * 
- * Runs periodically to complete drone upgrades:
+ * Runs periodically to complete upgrades for drones and extraction arrays:
  * - Finds all drones with upgradeCompletesAt <= now
- * - Calls storage.completeDroneUpgrade for each
+ * - Finds all arrays with upgradeCompletesAt <= now
+ * - Calls storage.completeDroneUpgrade / storage.completeArrayUpgrade for each
  * - Logs completion
  */
 
@@ -46,7 +47,7 @@ async function processUpgradeCompletions() {
   const now = new Date();
   
   // Find all drones with completed upgrades
-  const completedUpgrades = await db
+  const completedDroneUpgrades = await db
     .select()
     .from(drones)
     .where(
@@ -57,12 +58,33 @@ async function processUpgradeCompletions() {
       )
     );
   
-  for (const drone of completedUpgrades) {
+  for (const drone of completedDroneUpgrades) {
     try {
       await storage.completeDroneUpgrade(drone.id);
       log(`[Upgrade Tick] Drone ${drone.droneName} completed ${drone.upgradingType} upgrade`);
     } catch (error) {
       console.error(`[Upgrade Tick] Error completing upgrade for drone ${drone.id}:`, error);
+    }
+  }
+
+  // Find all arrays with completed upgrades
+  const completedArrayUpgrades = await db
+    .select()
+    .from(extractionArrays)
+    .where(
+      and(
+        isNotNull(extractionArrays.upgradingType),
+        isNotNull(extractionArrays.upgradeCompletesAt),
+        lte(extractionArrays.upgradeCompletesAt, now)
+      )
+    );
+  
+  for (const array of completedArrayUpgrades) {
+    try {
+      await storage.completeArrayUpgrade(array.id);
+      log(`[Upgrade Tick] Array ${array.arrayName} completed ${array.upgradingType} upgrade`);
+    } catch (error) {
+      console.error(`[Upgrade Tick] Error completing upgrade for array ${array.id}:`, error);
     }
   }
 }

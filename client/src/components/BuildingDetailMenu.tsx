@@ -23,6 +23,8 @@ interface BuildingDetailMenuProps {
   currentStorage?: number;
   resourceType?: "metal" | "crystal";
   onOpenStarMap?: () => void;
+  onOpenRiftScanner?: () => void;
+  onOpenArrayBay?: () => void;
 }
 
 export default function BuildingDetailMenu({
@@ -40,6 +42,8 @@ export default function BuildingDetailMenu({
   currentStorage = 0,
   resourceType,
   onOpenStarMap,
+  onOpenRiftScanner,
+  onOpenArrayBay,
 }: BuildingDetailMenuProps) {
   return (
     <Card className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 bg-card/95 backdrop-blur" data-testid="building-detail-menu">
@@ -123,6 +127,28 @@ export default function BuildingDetailMenu({
           >
             <MapPin className="mr-2 h-4 w-4" />
             Open Star Map
+          </Button>
+        )}
+        {onOpenRiftScanner && (
+          <Button
+            onClick={onOpenRiftScanner}
+            variant="outline"
+            className="flex-1"
+            data-testid="button-open-rift-scanner"
+          >
+            <Zap className="mr-2 h-4 w-4" />
+            Open Scanner
+          </Button>
+        )}
+        {onOpenArrayBay && (
+          <Button
+            onClick={onOpenArrayBay}
+            variant="outline"
+            className="flex-1"
+            data-testid="button-open-array-bay"
+          >
+            <Zap className="mr-2 h-4 w-4" />
+            Manage Arrays
           </Button>
         )}
         {onUpgrade && (

@@ -1,5 +1,5 @@
 import { db } from "./db";
-import { eq, and, ne, gte, sql } from "drizzle-orm";
+import { eq, and, ne, gte, sql, isNull } from "drizzle-orm";
 import { 
   users, 
   players, 
@@ -7,7 +7,10 @@ import {
   resourceNodes,
   drones,
   missions,
+  extractionArrays,
   DRONE_UPGRADE_CONFIG,
+  ARRAY_UPGRADE_CONFIG,
+  ARRAY_TIERS,
   type User, 
   type UpsertUser,
   type Player,
@@ -19,7 +22,9 @@ import {
   type Drone,
   type InsertDrone,
   type Mission,
-  type InsertMission
+  type InsertMission,
+  type ExtractionArray,
+  type InsertExtractionArray
 } from "@shared/schema";
 
 export interface IStorage {
@@ -73,6 +78,16 @@ export interface IStorage {
     droneId: string,
     desiredIron: number
   ): Promise<{ success: boolean; ironCollected: number }>;
+
+  // Extraction array operations
+  getPlayerExtractionArrays(playerId: string): Promise<ExtractionArray[]>;
+  createExtractionArray(array: InsertExtractionArray): Promise<ExtractionArray>;
+  updateExtractionArray(id: string, updates: Partial<ExtractionArray>): Promise<ExtractionArray>;
+  getExtractionArray(id: string): Promise<ExtractionArray | undefined>;
+  upgradeArray(arrayId: string, upgradeType: "uplink" | "beam" | "telemetry"): Promise<void>;
+  completeArrayUpgrade(arrayId: string): Promise<void>;
+  getAllActiveRifts(): Promise<ResourceNode[]>;
+  getAllDeployedArrays(): Promise<ExtractionArray[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -457,6 +472,159 @@ export class DatabaseStorage implements IStorage {
       // Only return success if UPDATE succeeded
       return { success: true, ironCollected: actualIronCollected };
     });
+  }
+
+  // Extraction array operations
+  async getPlayerExtractionArrays(playerId: string): Promise<ExtractionArray[]> {
+    return await db.select().from(extractionArrays).where(eq(extractionArrays.playerId, playerId));
+  }
+
+  async createExtractionArray(arrayData: InsertExtractionArray): Promise<ExtractionArray> {
+    const [array] = await db.insert(extractionArrays).values(arrayData).returning();
+    return array;
+  }
+
+  async updateExtractionArray(id: string, updates: Partial<ExtractionArray>): Promise<ExtractionArray> {
+    const [array] = await db
+      .update(extractionArrays)
+      .set(updates)
+      .where(eq(extractionArrays.id, id))
+      .returning();
+    return array;
+  }
+
+  async getExtractionArray(id: string): Promise<ExtractionArray | undefined> {
+    const [array] = await db.select().from(extractionArrays).where(eq(extractionArrays.id, id));
+    return array;
+  }
+
+  async upgradeArray(arrayId: string, upgradeType: "uplink" | "beam" | "telemetry"): Promise<void> {
+    return await db.transaction(async (tx) => {
+      // Get array with lock
+      const [array] = await tx
+        .select()
+        .from(extractionArrays)
+        .where(eq(extractionArrays.id, arrayId))
+        .for('update');
+
+      if (!array) {
+        throw new Error('Array not found');
+      }
+
+      // Check array is idle and not already upgrading
+      if (array.status !== 'idle') {
+        throw new Error('Array must be recalled before upgrading');
+      }
+
+      if (array.upgradingType) {
+        throw new Error('Array is already upgrading');
+      }
+
+      // Check upgrade level limits
+      const currentLevel = 
+        upgradeType === 'uplink' ? array.uplinkLevel :
+        upgradeType === 'beam' ? array.beamLevel :
+        array.telemetryLevel;
+
+      const maxLevel = ARRAY_UPGRADE_CONFIG.maxLevelPerTier[array.tier as 1 | 2 | 3];
+      
+      if (currentLevel >= maxLevel) {
+        throw new Error(`Array ${upgradeType} already at max level for tier ${array.tier}`);
+      }
+
+      // Calculate cost
+      const baseCost = ARRAY_UPGRADE_CONFIG.baseCosts[upgradeType];
+      const costMultiplier = Math.pow(ARRAY_UPGRADE_CONFIG.costMultiplier, currentLevel);
+      const metalCost = Math.round(baseCost.metal * costMultiplier);
+      const creditsCost = Math.round(baseCost.credits * costMultiplier);
+
+      // Get player
+      const [player] = await tx
+        .select()
+        .from(players)
+        .where(eq(players.id, array.playerId));
+
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      // Check resources
+      if (player.metal < metalCost || player.credits < creditsCost) {
+        throw new Error('Insufficient resources');
+      }
+
+      // Deduct resources
+      await tx
+        .update(players)
+        .set({
+          metal: player.metal - metalCost,
+          credits: player.credits - creditsCost,
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(players.id, array.playerId));
+
+      // Set upgrade
+      const upgradeCompletesAt = new Date(Date.now() + ARRAY_UPGRADE_CONFIG.upgradeDuration * 1000);
+
+      await tx
+        .update(extractionArrays)
+        .set({
+          upgradingType: upgradeType,
+          upgradeStartedAt: new Date(),
+          upgradeCompletesAt,
+        })
+        .where(eq(extractionArrays.id, arrayId));
+    });
+  }
+
+  async completeArrayUpgrade(arrayId: string): Promise<void> {
+    const [array] = await db
+      .select()
+      .from(extractionArrays)
+      .where(eq(extractionArrays.id, arrayId));
+
+    if (!array || !array.upgradingType) {
+      return;
+    }
+
+    const updates: Partial<ExtractionArray> = {
+      upgradingType: null,
+      upgradeStartedAt: null,
+      upgradeCompletesAt: null,
+    };
+
+    // Increment appropriate level
+    if (array.upgradingType === 'uplink') {
+      updates.uplinkLevel = array.uplinkLevel + 1;
+    } else if (array.upgradingType === 'beam') {
+      updates.beamLevel = array.beamLevel + 1;
+    } else if (array.upgradingType === 'telemetry') {
+      updates.telemetryLevel = array.telemetryLevel + 1;
+    }
+
+    await db
+      .update(extractionArrays)
+      .set(updates)
+      .where(eq(extractionArrays.id, arrayId));
+  }
+
+  async getAllActiveRifts(): Promise<ResourceNode[]> {
+    return await db
+      .select()
+      .from(resourceNodes)
+      .where(
+        and(
+          eq(resourceNodes.nodeType, 'crystal_rift'),
+          isNull(resourceNodes.collapseAt)
+        )
+      );
+  }
+
+  async getAllDeployedArrays(): Promise<ExtractionArray[]> {
+    return await db
+      .select()
+      .from(extractionArrays)
+      .where(eq(extractionArrays.status, 'deployed'));
   }
 }
 

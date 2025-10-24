@@ -9,6 +9,8 @@ import BuildingDetailMenu from "@/components/BuildingDetailMenu";
 import { StarMap } from "@/components/StarMap";
 import DroneHangar from "@/components/DroneHangar";
 import ResourceConsole from "@/components/ResourceConsole";
+import { RiftScanner } from "@/components/RiftScanner";
+import { ArrayBay } from "@/components/ArrayBay";
 import { Settings, Swords, Rocket, Activity } from "lucide-react";
 import type { Player, Building } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -42,6 +44,8 @@ export default function Game() {
   const [showStarMap, setShowStarMap] = useState(false);
   const [showDroneHangar, setShowDroneHangar] = useState(false);
   const [showResourceConsole, setShowResourceConsole] = useState(false);
+  const [showRiftScanner, setShowRiftScanner] = useState(false);
+  const [showArrayBay, setShowArrayBay] = useState(false);
 
   // Fetch player data
   const { data: player, isLoading: playerLoading } = useQuery<Player>({
@@ -260,6 +264,8 @@ export default function Game() {
   const getBuildOptions = () => {
     const hasCommand = buildings.some((b) => b.buildingType === "command" && b.isBuilt);
     const hasMine = buildings.some((b) => b.buildingType === "mine" && b.isBuilt);
+    const hasScanner = buildings.some((b) => b.buildingType === "scanner" && b.isBuilt);
+    const hasDroneHangar = buildings.some((b) => b.buildingType === "drone_hangar" && b.isBuilt);
 
     return [
       {
@@ -301,6 +307,26 @@ export default function Game() {
         available: hasMine && !buildings.some((b) => b.buildingType === "crystal"),
         reason: !hasMine ? "Requires Ore Mine" : undefined,
       },
+      {
+        id: "rift_scanner",
+        name: "Rift Scanner",
+        icon: "🌀",
+        description: "Detects unstable dimensional rifts rich in crystalline energy. Advanced technology for discovering rifts.",
+        cost: { credits: 300, metal: 150, crystals: 50 },
+        buildTime: 15,
+        available: hasScanner && !buildings.some((b) => b.buildingType === "rift_scanner"),
+        reason: !hasScanner ? "Requires Scanner Array" : undefined,
+      },
+      {
+        id: "array_bay",
+        name: "Array Bay",
+        icon: "🛸",
+        description: "Construct and deploy extraction arrays to siphon crystals from dimensional rifts continuously.",
+        cost: { credits: 400, metal: 200, crystals: 75 },
+        buildTime: 18,
+        available: hasDroneHangar && !buildings.some((b) => b.buildingType === "array_bay"),
+        reason: !hasDroneHangar ? "Requires Drone Hangar" : undefined,
+      },
     ].filter((o) => !buildings.some((b) => b.buildingType === o.id && b.isBuilt));
   };
 
@@ -317,8 +343,8 @@ export default function Game() {
     ...b,
     id: b.buildingType,
     position: { x: b.positionX, y: b.positionY },
-    icon: b.buildingType === "command" ? "🏢" : b.buildingType === "mine" ? "⛏️" : b.buildingType === "scanner" ? "📡" : "💎",
-    description: b.buildingType === "command" ? "Command Center" : b.buildingType === "mine" ? "Ore Mine" : b.buildingType === "scanner" ? "Scanner Array" : "Crystal Synthesizer",
+    icon: b.buildingType === "command" ? "🏢" : b.buildingType === "mine" ? "⛏️" : b.buildingType === "scanner" ? "📡" : b.buildingType === "crystal" ? "💎" : b.buildingType === "rift_scanner" ? "🌀" : b.buildingType === "array_bay" ? "🛸" : "🏭",
+    description: b.buildingType === "command" ? "Command Center" : b.buildingType === "mine" ? "Ore Mine" : b.buildingType === "scanner" ? "Scanner Array" : b.buildingType === "crystal" ? "Crystal Synthesizer" : b.buildingType === "rift_scanner" ? "Rift Scanner" : b.buildingType === "array_bay" ? "Array Bay" : "Building",
     resourceType: (b.resourceType === "metal" || b.resourceType === "crystals") ? b.resourceType as "metal" | "crystal" : undefined,
     currentStorage: b.currentStorage || undefined,
     maxStorage: b.maxStorage || undefined,
@@ -447,6 +473,8 @@ export default function Game() {
           currentStorage={Math.floor(selectedBuildingData.currentStorage || 0)}
           resourceType={selectedBuildingData.resourceType as "metal" | "crystal" | undefined}
           onOpenStarMap={selectedBuildingData.buildingType === "scanner" ? () => setShowStarMap(true) : undefined}
+          onOpenRiftScanner={selectedBuildingData.buildingType === "rift_scanner" ? () => setShowRiftScanner(true) : undefined}
+          onOpenArrayBay={selectedBuildingData.buildingType === "array_bay" ? () => setShowArrayBay(true) : undefined}
         />
       )}
 
@@ -468,6 +496,34 @@ export default function Game() {
         open={showResourceConsole}
         onOpenChange={setShowResourceConsole}
       />
+
+      {/* Rift Scanner Dialog */}
+      {showRiftScanner && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowRiftScanner(false)} data-testid="button-close-rift-scanner">
+                ✕
+              </Button>
+            </div>
+            <RiftScanner />
+          </div>
+        </div>
+      )}
+
+      {/* Array Bay Dialog */}
+      {showArrayBay && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="max-w-2xl w-full">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowArrayBay(false)} data-testid="button-close-array-bay">
+                ✕
+              </Button>
+            </div>
+            <ArrayBay />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -529,6 +529,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // RIFT SCANNER & EXTRACTION ARRAYS (Phase 4)
+  // ============================================================================
+
+  // Scan for crystal rifts
+  app.post('/api/buildings/rift-scanner/scan', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get player to check scanner level
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Get rift scanner building
+      const buildings = await storage.getPlayerBuildings(userId);
+      const riftScanner = buildings.find(b => b.buildingType === 'rift_scanner' && b.isBuilt);
+      
+      if (!riftScanner) {
+        return res.status(400).json({ message: "Rift Scanner not built" });
+      }
+
+      const scannerLevel = riftScanner.level;
+
+      // Check existing rifts count
+      const existingRifts = await storage.getPlayerResourceNodes(userId);
+      const riftsCount = existingRifts.filter(n => n.nodeType === 'crystal_rift').length;
+      
+      const maxRifts = scannerLevel === 1 ? 2 : scannerLevel === 2 ? 4 : 6;
+      if (riftsCount >= maxRifts) {
+        return res.status(400).json({ message: `Maximum ${maxRifts} rifts for scanner level ${scannerLevel}` });
+      }
+
+      // Create new rift with random properties
+      const baseStability = 500 + Math.random() * 500; // 500-1000
+      const richness = 5 + Math.floor(Math.random() * 11); // 5-15 crystals per tick
+      const volatility = 0.8 + Math.random() * 0.4; // 0.8-1.2
+      
+      // Random distance class weighted toward player's scanner level
+      const distanceClasses = scannerLevel === 1 ? ['short'] : scannerLevel === 2 ? ['short', 'mid'] : ['short', 'mid', 'deep'];
+      const distanceClass = distanceClasses[Math.floor(Math.random() * distanceClasses.length)];
+
+      const rift = await storage.createResourceNode({
+        playerId: userId,
+        nodeType: 'crystal_rift',
+        nodeName: `Rift-${riftsCount + 1}`,
+        distanceClass,
+        isDiscovered: true,
+        discoveredAt: new Date(),
+        totalIron: null,
+        remainingIron: null,
+        stability: baseStability,
+        maxStability: baseStability,
+        richnessCrystalPerTick: richness,
+        volatilityModifier: volatility,
+        collapseAt: null,
+        energyOutput: richness,
+        isDepleted: false,
+        depletedAt: null,
+      });
+
+      res.json(rift);
+    } catch (error) {
+      console.error("Error scanning for rifts:", error);
+      res.status(500).json({ message: "Failed to scan for rifts" });
+    }
+  });
+
+  // Get all extraction arrays for authenticated player
+  app.get('/api/extraction-arrays', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const arrays = await storage.getPlayerExtractionArrays(userId);
+      res.json(arrays);
+    } catch (error) {
+      console.error("Error fetching extraction arrays:", error);
+      res.status(500).json({ message: "Failed to fetch extraction arrays" });
+    }
+  });
+
+  // Build a new extraction array
+  app.post('/api/extraction-arrays/build', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { tier, arrayName } = req.body;
+
+      if (!tier || ![1, 2, 3].includes(tier)) {
+        return res.status(400).json({ message: "Invalid tier. Must be 1, 2, or 3" });
+      }
+
+      // Get player
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Check array capacity
+      const existingArrays = await storage.getPlayerExtractionArrays(userId);
+      if (existingArrays.length >= player.maxExtractionArrays) {
+        return res.status(400).json({ message: `Maximum ${player.maxExtractionArrays} arrays allowed` });
+      }
+
+      // Get tier config
+      const tierConfig = [
+        { id: 1, name: "T1 Array", baseExtraction: 2, buildCost: { metal: 200, credits: 100 } },
+        { id: 2, name: "T2 Array", baseExtraction: 5, buildCost: { metal: 500, credits: 250 } },
+        { id: 3, name: "T3 Array", baseExtraction: 10, buildCost: { metal: 1000, credits: 500 } },
+      ].find(t => t.id === tier);
+
+      if (!tierConfig) {
+        return res.status(400).json({ message: "Invalid tier configuration" });
+      }
+
+      // Check resources
+      if (player.metal < tierConfig.buildCost.metal || player.credits < tierConfig.buildCost.credits) {
+        return res.status(400).json({ message: "Insufficient resources" });
+      }
+
+      // Deduct resources
+      await storage.updatePlayer(userId, {
+        metal: player.metal - tierConfig.buildCost.metal,
+        credits: player.credits - tierConfig.buildCost.credits,
+      });
+
+      // Create array
+      const array = await storage.createExtractionArray({
+        playerId: userId,
+        arrayName: arrayName || `Array-${existingArrays.length + 1}`,
+        tier,
+        baseExtractionRate: tierConfig.baseExtraction,
+        uplinkLevel: 0,
+        beamLevel: 0,
+        telemetryLevel: 0,
+        upgradingType: null,
+        upgradeStartedAt: null,
+        upgradeCompletesAt: null,
+        status: 'idle',
+        targetRiftId: null,
+        deployedAt: null,
+        totalCrystalsExtracted: 0,
+      });
+
+      res.json(array);
+    } catch (error) {
+      console.error("Error building extraction array:", error);
+      res.status(500).json({ message: "Failed to build extraction array" });
+    }
+  });
+
+  // Deploy extraction array to rift
+  app.post('/api/extraction-arrays/:id/deploy', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: arrayId } = req.params;
+      const { riftId } = req.body;
+
+      if (!riftId) {
+        return res.status(400).json({ message: "Rift ID required" });
+      }
+
+      // Get array
+      const array = await storage.getExtractionArray(arrayId);
+      if (!array || array.playerId !== userId) {
+        return res.status(404).json({ message: "Array not found" });
+      }
+
+      // Check array is idle
+      if (array.status !== 'idle') {
+        return res.status(400).json({ message: "Array must be idle to deploy" });
+      }
+
+      // Get rift
+      const rift = await storage.getResourceNode(riftId);
+      if (!rift || rift.playerId !== userId) {
+        return res.status(404).json({ message: "Rift not found" });
+      }
+
+      // Check rift type and status
+      if (rift.nodeType !== 'crystal_rift') {
+        return res.status(400).json({ message: "Target must be a crystal rift" });
+      }
+
+      if (rift.collapseAt || rift.isDepleted) {
+        return res.status(400).json({ message: "Rift has collapsed" });
+      }
+
+      // Deploy array
+      const updatedArray = await storage.updateExtractionArray(arrayId, {
+        status: 'deployed',
+        targetRiftId: riftId,
+        deployedAt: new Date(),
+      });
+
+      res.json(updatedArray);
+    } catch (error) {
+      console.error("Error deploying extraction array:", error);
+      res.status(500).json({ message: "Failed to deploy extraction array" });
+    }
+  });
+
+  // Recall extraction array from rift
+  app.post('/api/extraction-arrays/:id/recall', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: arrayId } = req.params;
+
+      // Get array
+      const array = await storage.getExtractionArray(arrayId);
+      if (!array || array.playerId !== userId) {
+        return res.status(404).json({ message: "Array not found" });
+      }
+
+      // Check array is deployed
+      if (array.status !== 'deployed') {
+        return res.status(400).json({ message: "Array is not deployed" });
+      }
+
+      // Recall array
+      const updatedArray = await storage.updateExtractionArray(arrayId, {
+        status: 'idle',
+        targetRiftId: null,
+        deployedAt: null,
+      });
+
+      res.json(updatedArray);
+    } catch (error) {
+      console.error("Error recalling extraction array:", error);
+      res.status(500).json({ message: "Failed to recall extraction array" });
+    }
+  });
+
+  // Upgrade extraction array
+  app.post('/api/extraction-arrays/:id/upgrade', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: arrayId } = req.params;
+      const { type } = req.body;
+
+      // Validate upgrade type
+      if (!type || !['uplink', 'beam', 'telemetry'].includes(type)) {
+        return res.status(400).json({ message: "Invalid upgrade type. Must be 'uplink', 'beam', or 'telemetry'" });
+      }
+
+      // Get array
+      const array = await storage.getExtractionArray(arrayId);
+      if (!array || array.playerId !== userId) {
+        return res.status(404).json({ message: "Array not found" });
+      }
+
+      // Attempt upgrade
+      await storage.upgradeArray(arrayId, type as "uplink" | "beam" | "telemetry");
+
+      res.json({ success: true, message: `${type} upgrade started` });
+    } catch (error: any) {
+      console.error("Error upgrading extraction array:", error);
+      res.status(400).json({ message: error.message || "Failed to upgrade extraction array" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

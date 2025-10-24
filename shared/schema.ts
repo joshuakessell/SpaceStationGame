@@ -147,6 +147,42 @@ export const DRONE_UPGRADE_CONFIG = {
   upgradeDuration: 30,  // 30 seconds per upgrade
 };
 
+// Rift configuration (Phase 4.3)
+export const RIFT_CONFIG = {
+  baseStability: { min: 500, max: 1000 },
+  baseRichness: { min: 5, max: 15 }, // crystals per tick
+  baseVolatility: { min: 0.8, max: 1.2 }, // multiplier for decay
+  passiveDecayPerTick: 1, // stability lost per tick without extraction
+  extractionDecayMultiplier: 0.5, // additional decay per crystal extracted
+  scanCooldown: 60, // seconds between scans
+  scanRadius: { 1: 50, 2: 100, 3: 150 }, // by scanner level
+  maxRiftsByLevel: { 1: 2, 2: 4, 3: 6 }, // max rifts discovered by scanner level
+};
+
+// Extraction array tiers (Phase 4.2)
+export const ARRAY_TIERS = [
+  { id: 1, name: "T1 Array", baseExtraction: 2, buildCost: { metal: 200, credits: 100 }, buildTime: 30 },
+  { id: 2, name: "T2 Array", baseExtraction: 5, buildCost: { metal: 500, credits: 250 }, buildTime: 60 },
+  { id: 3, name: "T3 Array", baseExtraction: 10, buildCost: { metal: 1000, credits: 500 }, buildTime: 90 },
+];
+
+// Array upgrade configuration (Phase 4.7)
+export const ARRAY_UPGRADE_CONFIG = {
+  maxLevelPerTier: {
+    1: 3,  // T1 arrays can upgrade to level 3
+    2: 5,  // T2 arrays can upgrade to level 5
+    3: 7,  // T3 arrays can upgrade to level 7
+  } as Record<number, number>,
+  bonusPerLevel: 0.10,  // +10% per level
+  baseCosts: {
+    uplink: { metal: 100, credits: 50 }, // increases extraction rate
+    beam: { metal: 80, credits: 40 }, // reduces stability decay
+    telemetry: { metal: 60, credits: 30 }, // improves detection (future)
+  },
+  costMultiplier: 1.5,  // Costs scale by 1.5x per level
+  upgradeDuration: 60,  // 60 seconds per upgrade
+};
+
 // Resource nodes: asteroid clusters and crystal rifts
 export const resourceNodes = pgTable("resource_nodes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -161,9 +197,12 @@ export const resourceNodes = pgTable("resource_nodes", {
   totalIron: integer("total_iron"), // Finite pool for asteroids
   remainingIron: integer("remaining_iron"),
   // Crystal rift properties
-  stability: real("stability"), // 0-100, decays over time
+  stability: real("stability"), // Current stability for rifts
   energyOutput: integer("energy_output"), // Crystal per minute
   maxStability: real("max_stability").default(100),
+  richnessCrystalPerTick: integer("richness_crystal_per_tick"), // Crystals extracted per tick
+  volatilityModifier: real("volatility_modifier"), // Decay rate multiplier (0.8-1.2)
+  collapseAt: timestamp("collapse_at"), // Set when stability reaches 0
   // Depletion
   isDepleted: boolean("is_depleted").notNull().default(false),
   depletedAt: timestamp("depleted_at"),
@@ -211,15 +250,21 @@ export const extractionArrays = pgTable("extraction_arrays", {
   playerId: varchar("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
   arrayName: text("array_name").notNull(),
   tier: integer("tier").notNull().default(1),
-  // Stats
-  uplinkStrength: integer("uplink_strength").notNull(), // Energy per minute
-  beamStability: real("beam_stability").notNull(), // Reduces rift decay
-  telemetryRange: integer("telemetry_range").notNull(), // Max distance class
-  transferRate: integer("transfer_rate").notNull(),
+  // Base stats
+  baseExtractionRate: integer("base_extraction_rate").notNull(), // Crystals per tick
+  // Upgrade levels (Phase 4.7)
+  uplinkLevel: integer("uplink_level").notNull().default(0),
+  beamLevel: integer("beam_level").notNull().default(0),
+  telemetryLevel: integer("telemetry_level").notNull().default(0),
+  // Ongoing upgrade tracking
+  upgradingType: varchar("upgrading_type"), // "uplink" | "beam" | "telemetry" | null
+  upgradeStartedAt: timestamp("upgrade_started_at"),
+  upgradeCompletesAt: timestamp("upgrade_completes_at"),
   // Current state
-  status: text("status").notNull().default("idle"), // idle, anchoring, harvesting, returning
+  status: text("status").notNull().default("idle"), // idle, deployed, decommissioned
   targetRiftId: varchar("target_rift_id").references(() => resourceNodes.id, { onDelete: "set null" }),
   deployedAt: timestamp("deployed_at"),
+  totalCrystalsExtracted: integer("total_crystals_extracted").notNull().default(0),
   // Metadata
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
@@ -465,6 +510,11 @@ export const insertMissionSchema = createInsertSchema(missions).omit({
   createdAt: true,
 });
 
+export const insertExtractionArraySchema = createInsertSchema(extractionArrays).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertResearchProjectSchema = createInsertSchema(researchProjects).omit({
   id: true,
   createdAt: true,
@@ -490,6 +540,7 @@ export type InsertResourceNode = z.infer<typeof insertResourceNodeSchema>;
 export type Drone = typeof drones.$inferSelect;
 export type InsertDrone = z.infer<typeof insertDroneSchema>;
 export type ExtractionArray = typeof extractionArrays.$inferSelect;
+export type InsertExtractionArray = z.infer<typeof insertExtractionArraySchema>;
 export type Mission = typeof missions.$inferSelect;
 export type InsertMission = z.infer<typeof insertMissionSchema>;
 export type ResearchProject = typeof researchProjects.$inferSelect;
@@ -521,5 +572,27 @@ export function getEffectiveDroneStats(drone: Drone) {
     speed: baseTier.speed * (1 + drone.speedLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel),
     cargoCapacity: baseTier.cargoCapacity * (1 + drone.cargoLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel),
     harvestRate: baseTier.harvestRate * (1 + drone.harvestLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel),
+  };
+}
+
+// Helper to calculate effective extraction array stats with upgrades applied
+export function getEffectiveArrayStats(array: ExtractionArray) {
+  const baseTier = ARRAY_TIERS.find(t => t.id === array.tier);
+  if (!baseTier) {
+    return {
+      extractionRate: array.baseExtractionRate,
+      stabilityReduction: 1.0, // no reduction
+    };
+  }
+  
+  // Uplink increases extraction rate
+  const extractionRate = baseTier.baseExtraction * (1 + array.uplinkLevel * ARRAY_UPGRADE_CONFIG.bonusPerLevel);
+  
+  // Beam reduces stability decay (higher level = less decay)
+  const stabilityReduction = 1.0 - (array.beamLevel * ARRAY_UPGRADE_CONFIG.bonusPerLevel * 0.5);
+  
+  return {
+    extractionRate: Math.round(extractionRate),
+    stabilityReduction: Math.max(0.5, stabilityReduction), // Min 50% reduction
   };
 }
