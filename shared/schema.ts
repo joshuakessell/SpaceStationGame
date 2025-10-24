@@ -272,6 +272,148 @@ export const BUILDING_POWER_COSTS = {
   power_module: 0, // Power modules don't consume power
 } as const;
 
+// ============================================================================
+// RESEARCH TECH TREE (Phase 6.1)
+// ============================================================================
+
+export interface ResearchTech {
+  id: string;
+  name: string;
+  category: "mining" | "ship" | "science_lab";
+  description: string;
+  cost: {
+    metal?: number;
+    crystals?: number;
+    credits?: number;
+  };
+  duration: number; // seconds
+  prerequisites: string[]; // Array of research IDs
+  bonuses: {
+    miningEfficiency?: number;
+    cargoCapacity?: number;
+    droneSpeed?: number;
+    shieldCapacity?: number;
+    weaponDamage?: number;
+    hullStrength?: number;
+    researchSpeed?: number;
+    researchCost?: number;
+  };
+}
+
+export const RESEARCH_TREE: ResearchTech[] = [
+  // ============================================================================
+  // MINING CATEGORY (MD-xxx)
+  // ============================================================================
+  {
+    id: "MD-001",
+    name: "Mining Efficiency I",
+    category: "mining",
+    description: "+10% drone harvest rate",
+    cost: { metal: 100, credits: 50 },
+    duration: 60,
+    prerequisites: [],
+    bonuses: { miningEfficiency: 0.10 },
+  },
+  {
+    id: "MD-002",
+    name: "Mining Efficiency II",
+    category: "mining",
+    description: "+10% drone harvest rate",
+    cost: { metal: 250, credits: 100 },
+    duration: 120,
+    prerequisites: ["MD-001"],
+    bonuses: { miningEfficiency: 0.10 },
+  },
+  {
+    id: "MD-003",
+    name: "Cargo Expansion I",
+    category: "mining",
+    description: "+10% drone cargo capacity",
+    cost: { metal: 150, crystals: 30, credits: 75 },
+    duration: 90,
+    prerequisites: [],
+    bonuses: { cargoCapacity: 0.10 },
+  },
+  {
+    id: "MD-004",
+    name: "Cargo Expansion II",
+    category: "mining",
+    description: "+10% drone cargo capacity",
+    cost: { metal: 300, crystals: 80, credits: 150 },
+    duration: 150,
+    prerequisites: ["MD-003"],
+    bonuses: { cargoCapacity: 0.10 },
+  },
+  {
+    id: "MD-005",
+    name: "Drone Speed I",
+    category: "mining",
+    description: "+10% drone travel speed",
+    cost: { metal: 120, credits: 60 },
+    duration: 75,
+    prerequisites: [],
+    bonuses: { droneSpeed: 0.10 },
+  },
+
+  // ============================================================================
+  // SHIP CATEGORY (SR-xxx) - for Phase 7
+  // ============================================================================
+  {
+    id: "SR-001",
+    name: "Shield Technology I",
+    category: "ship",
+    description: "+10% ship shield capacity",
+    cost: { metal: 200, crystals: 100, credits: 100 },
+    duration: 120,
+    prerequisites: [],
+    bonuses: { shieldCapacity: 0.10 },
+  },
+  {
+    id: "SR-002",
+    name: "Weapon Systems I",
+    category: "ship",
+    description: "+10% weapon damage",
+    cost: { metal: 250, crystals: 150, credits: 125 },
+    duration: 150,
+    prerequisites: [],
+    bonuses: { weaponDamage: 0.10 },
+  },
+  {
+    id: "SR-003",
+    name: "Hull Reinforcement I",
+    category: "ship",
+    description: "+10% hull strength",
+    cost: { metal: 300, crystals: 100, credits: 150 },
+    duration: 180,
+    prerequisites: [],
+    bonuses: { hullStrength: 0.10 },
+  },
+
+  // ============================================================================
+  // SCIENCE LAB CATEGORY (SL-xxx)
+  // ============================================================================
+  {
+    id: "SL-001",
+    name: "Research Speed I",
+    category: "science_lab",
+    description: "-10% research time",
+    cost: { metal: 150, crystals: 50, credits: 100 },
+    duration: 90,
+    prerequisites: [],
+    bonuses: { researchSpeed: 0.10 },
+  },
+  {
+    id: "SL-002",
+    name: "Resource Efficiency I",
+    category: "science_lab",
+    description: "-10% research costs",
+    cost: { metal: 200, crystals: 80, credits: 150 },
+    duration: 120,
+    prerequisites: [],
+    bonuses: { researchCost: 0.10 },
+  },
+];
+
 // Resource nodes: asteroid clusters and crystal rifts
 export const resourceNodes = pgTable("resource_nodes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -612,6 +754,31 @@ export const insertResearchProjectSchema = createInsertSchema(researchProjects).
 export const insertShipSchema = createInsertSchema(ships).omit({
   id: true,
   createdAt: true,
+});
+
+// Research tech validation schema
+export const researchTechSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  category: z.enum(["mining", "ship", "science_lab"]),
+  description: z.string(),
+  cost: z.object({
+    metal: z.number().min(0).optional(),
+    crystals: z.number().min(0).optional(),
+    credits: z.number().min(0).optional(),
+  }),
+  duration: z.number().min(1),
+  prerequisites: z.array(z.string()),
+  bonuses: z.object({
+    miningEfficiency: z.number().min(0).max(1).optional(),
+    cargoCapacity: z.number().min(0).max(1).optional(),
+    droneSpeed: z.number().min(0).max(1).optional(),
+    shieldCapacity: z.number().min(0).max(1).optional(),
+    weaponDamage: z.number().min(0).max(1).optional(),
+    hullStrength: z.number().min(0).max(1).optional(),
+    researchSpeed: z.number().min(0).max(1).optional(),
+    researchCost: z.number().min(0).max(1).optional(),
+  }),
 });
 
 // ============================================================================
