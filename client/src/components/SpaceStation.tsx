@@ -18,6 +18,9 @@ interface SpaceStationProps {
   onHubClick: () => void;
   onBuildingClick: (buildingId: string) => void;
   onCollectResource: (buildingId: string) => void;
+  placementMode?: boolean;
+  availablePositions?: Array<{ x: number; y: number }>;
+  onPositionSelect?: (position: { x: number; y: number }) => void;
 }
 
 export default function SpaceStation({
@@ -25,6 +28,9 @@ export default function SpaceStation({
   onHubClick,
   onBuildingClick,
   onCollectResource,
+  placementMode,
+  availablePositions,
+  onPositionSelect,
 }: SpaceStationProps) {
   const [hoveredBuilding, setHoveredBuilding] = useState<string | null>(null);
 
@@ -187,6 +193,25 @@ export default function SpaceStation({
             </div>
           );
         })}
+
+        {/* Placement spots */}
+        {placementMode && availablePositions?.map((pos, idx) => (
+          <div
+            key={`placement-${idx}`}
+            className="absolute cursor-pointer"
+            style={{
+              top: pos.y + "%",
+              left: pos.x + "%",
+              transform: "translate(-50%, -50%)",
+            }}
+            onClick={() => onPositionSelect?.(pos)}
+            data-testid={`placement-spot-${idx}`}
+          >
+            <div className="w-16 h-16 rounded-full bg-yellow-400/50 border-4 border-yellow-400 animate-pulse flex items-center justify-center">
+              <span className="text-2xl">➕</span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

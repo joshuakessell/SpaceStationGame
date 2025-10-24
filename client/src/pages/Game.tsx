@@ -54,6 +54,11 @@ export default function Game() {
   const [showResearchBay, setShowResearchBay] = useState(false);
   const [showShipyard, setShowShipyard] = useState(false);
   const [showBattle, setShowBattle] = useState(false);
+  const [placementMode, setPlacementMode] = useState<{
+    buildingType: string;
+    cost: { credits?: number; metal?: number; crystals?: number };
+  } | null>(null);
+  const [availablePositions, setAvailablePositions] = useState<Array<{ x: number; y: number }>>([]);
 
   // Fetch player data
   const { data: player, isLoading: playerLoading } = useQuery<Player>({
@@ -201,72 +206,128 @@ export default function Game() {
     }
   };
 
-  const handleBuild = async (buildingId: string) => {
+  const calculateAvailablePositions = (buildingsArray: typeof buildingsData) => {
+    const occupied = new Set(buildingsArray.map(b => `${b.position.x},${b.position.y}`));
+    const available: Array<{ x: number; y: number }> = [];
+    
+    // Hub is at (50, 50), check 4 cardinal directions
+    const hubAdjacent = [
+      { x: 50, y: 35 }, // top
+      { x: 50, y: 65 }, // bottom
+      { x: 35, y: 50 }, // left
+      { x: 65, y: 50 }, // right
+    ];
+    
+    // Add hub-adjacent spots if not occupied
+    hubAdjacent.forEach(pos => {
+      if (!occupied.has(`${pos.x},${pos.y}`)) {
+        available.push(pos);
+      }
+    });
+    
+    // For each built building, check adjacent spots
+    buildingsArray.filter(b => b.isBuilt).forEach(building => {
+      const adjacent = [
+        { x: building.position.x, y: building.position.y - 15 }, // top
+        { x: building.position.x, y: building.position.y + 15 }, // bottom
+        { x: building.position.x - 15, y: building.position.y }, // left
+        { x: building.position.x + 15, y: building.position.y }, // right
+      ];
+      
+      adjacent.forEach(pos => {
+        // Check bounds (10-90% to stay on screen)
+        if (pos.x >= 10 && pos.x <= 90 && pos.y >= 10 && pos.y <= 90) {
+          if (!occupied.has(`${pos.x},${pos.y}`) && 
+              !available.some(a => a.x === pos.x && a.y === pos.y)) {
+            available.push(pos);
+          }
+        }
+      });
+    });
+    
+    return available;
+  };
+
+  const handleBuild = (buildingId: string) => {
     const buildOptions = getBuildOptions();
     const option = buildOptions.find((o) => o.id === buildingId);
     if (!option) return;
 
-    // Deduct costs
-    await updatePlayerMutation.mutateAsync({
-      credits: player.credits - (option.cost.credits || 0),
-      metal: player.metal - (option.cost.metal || 0),
-      crystals: player.crystals - (option.cost.crystals || 0),
-    });
-
-    // Determine position
-    const positions = [
-      { x: 50, y: 20 },
-      { x: 20, y: 50 },
-      { x: 80, y: 50 },
-      { x: 50, y: 80 },
-      { x: 30, y: 30 },
-      { x: 70, y: 30 },
-    ];
-
-    await createBuildingMutation.mutateAsync({
+    // Enter placement mode
+    setPlacementMode({
       buildingType: buildingId,
-      name: option.name,
-      level: 1,
-      positionX: positions[buildings.length]?.x || 50,
-      positionY: positions[buildings.length]?.y || 20,
-      isBuilt: false,
-      isBuilding: true,
-      currentStorage: 0,
-      maxStorage: buildingId === "mine" ? 100 : buildingId === "crystal" ? 50 : null,
-      productionRate: buildingId === "mine" ? 5 : buildingId === "crystal" ? 2 : null,
-      resourceType: buildingId === "mine" ? "metal" : buildingId === "crystal" ? "crystals" : null,
-      buildStartedAt: new Date(),
+      cost: option.cost,
     });
-
+    setAvailablePositions(calculateAvailablePositions(buildingsData));
     setShowBuildMenu(false);
+  };
 
-    // Simulate building completion
-    setTimeout(async () => {
-      // Refetch buildings to get the newly created one
-      await queryClient.refetchQueries({ queryKey: ["/api/buildings"] });
-      const updatedBuildings = queryClient.getQueryData<Building[]>(["/api/buildings"]);
-      const newBuilding = updatedBuildings?.find((b) => b.buildingType === buildingId && b.isBuilding);
-      
-      if (newBuilding) {
-        await updateBuildingMutation.mutateAsync({
-          id: newBuilding.id,
-          updates: { 
-            isBuilt: true, 
-            isBuilding: false,
-            lastCollectedAt: new Date(),
-          },
-        });
+  const handlePositionSelect = async (position: { x: number; y: number }) => {
+    if (!placementMode) return;
 
-        const currentTutorialStep = queryClient.getQueryData<Player>(["/api/player"])?.tutorialStep;
-        if (currentTutorialStep === "build_command") {
-          await updatePlayerMutation.mutateAsync({ tutorialStep: "command_building" });
-        } else if (currentTutorialStep === "build_mine") {
-          await updatePlayerMutation.mutateAsync({ tutorialStep: "mine_building" });
-        } else if (currentTutorialStep === "build_crystal") {
-          await updatePlayerMutation.mutateAsync({ tutorialStep: "crystal_building" });
+    try {
+      // Deduct costs
+      await updatePlayerMutation.mutateAsync({
+        credits: player.credits - (placementMode.cost.credits || 0),
+        metal: player.metal - (placementMode.cost.metal || 0),
+        crystals: player.crystals - (placementMode.cost.crystals || 0),
+      });
+
+      const option = getBuildOptions().find((o) => o.id === placementMode.buildingType);
+      if (!option) return;
+
+      await createBuildingMutation.mutateAsync({
+        buildingType: placementMode.buildingType,
+        name: option.name,
+        level: 1,
+        positionX: position.x,
+        positionY: position.y,
+        isBuilt: false,
+        isBuilding: true,
+        currentStorage: 0,
+        maxStorage: placementMode.buildingType === "mine" ? 100 : placementMode.buildingType === "crystal" ? 50 : null,
+        productionRate: placementMode.buildingType === "mine" ? 5 : placementMode.buildingType === "crystal" ? 2 : null,
+        resourceType: placementMode.buildingType === "mine" ? "metal" : placementMode.buildingType === "crystal" ? "crystals" : null,
+        buildStartedAt: new Date(),
+      });
+
+      setPlacementMode(null);
+      setAvailablePositions([]);
+      toast({ title: "Building construction started!" });
+
+      // Simulate building completion
+      setTimeout(async () => {
+        await queryClient.refetchQueries({ queryKey: ["/api/buildings"] });
+        const updatedBuildings = queryClient.getQueryData<Building[]>(["/api/buildings"]);
+        const newBuilding = updatedBuildings?.find((b) => b.buildingType === placementMode.buildingType && b.isBuilding);
+        
+        if (newBuilding) {
+          await updateBuildingMutation.mutateAsync({
+            id: newBuilding.id,
+            updates: { 
+              isBuilt: true, 
+              isBuilding: false,
+              lastCollectedAt: new Date(),
+            },
+          });
+
+          const currentTutorialStep = queryClient.getQueryData<Player>(["/api/player"])?.tutorialStep;
+          if (currentTutorialStep === "build_command") {
+            await updatePlayerMutation.mutateAsync({ tutorialStep: "command_building" });
+          } else if (currentTutorialStep === "build_mine") {
+            await updatePlayerMutation.mutateAsync({ tutorialStep: "mine_building" });
+          } else if (currentTutorialStep === "build_crystal") {
+            await updatePlayerMutation.mutateAsync({ tutorialStep: "crystal_building" });
+          }
         }
-      }
-    }, option.buildTime * 1000);
+      }, option.buildTime * 1000);
+    } catch (error: any) {
+      toast({ 
+        title: "Build failed", 
+        description: error.message,
+        variant: "destructive" 
+      });
+    }
   };
 
   const getBuildOptions = () => {
@@ -339,8 +400,42 @@ export default function Game() {
   };
 
   const handleBuildingClick = (buildingId: string) => {
-    if (tutorialStep !== "complete") return;
-    setSelectedBuilding(buildingId);
+    const building = buildingsData.find((b) => b.id === buildingId);
+    if (!building || !building.isBuilt) return;
+
+    // Map building types to their menu functions
+    switch (building.buildingType) {
+      case "drone_bay":
+        setShowDroneHangar(true);
+        break;
+      case "power_generator":
+      case "fusion_reactor":
+      case "antimatter_core":
+        setShowPowerManagement(true);
+        break;
+      case "research_bay":
+        setShowResearchBay(true);
+        break;
+      case "shipyard":
+        setShowShipyard(true);
+        break;
+      case "combat_simulator":
+        setShowBattle(true);
+        break;
+      case "scanner":
+        setShowStarMap(true);
+        break;
+      case "rift_scanner":
+        setShowRiftScanner(true);
+        break;
+      case "array_bay":
+        setShowArrayBay(true);
+        break;
+      default:
+        // For other buildings, show building detail menu
+        setSelectedBuilding(buildingId);
+        break;
+    }
   };
 
   const handleCollectResource = async (buildingId: string) => {
@@ -394,56 +489,14 @@ export default function Game() {
         </div>
         <div className="flex items-center gap-2">
           {tutorialStep === "complete" && (
-            <>
-              <Button 
-                variant="default" 
-                onClick={() => setShowDroneHangar(true)}
-                data-testid="button-drone-hangar"
-              >
-                <Rocket className="w-5 h-5 mr-2" />
-                Drones
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={() => setShowResourceConsole(true)}
-                data-testid="button-resource-console"
-              >
-                <Activity className="w-5 h-5 mr-2" />
-                Console
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={() => setShowPowerManagement(true)}
-                data-testid="button-power-management"
-              >
-                <Zap className="w-5 h-5 mr-2" />
-                Power
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={() => setShowResearchBay(true)}
-                data-testid="button-research-bay"
-              >
-                <Beaker className="w-5 h-5 mr-2" />
-                Research
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={() => setShowShipyard(true)}
-                data-testid="nav-shipyard"
-              >
-                <Rocket className="w-5 h-5 mr-2" />
-                Shipyard
-              </Button>
-              <Button 
-                variant="default" 
-                onClick={() => setShowBattle(true)}
-                data-testid="nav-battle"
-              >
-                <Swords className="w-5 h-5 mr-2" />
-                Battle
-              </Button>
-            </>
+            <Button 
+              variant="default" 
+              onClick={() => setShowResourceConsole(true)}
+              data-testid="button-resource-console"
+            >
+              <Activity className="w-5 h-5 mr-2" />
+              Console
+            </Button>
           )}
           <Button 
             variant="outline" 
@@ -463,6 +516,9 @@ export default function Game() {
           onHubClick={handleHubClick}
           onBuildingClick={handleBuildingClick}
           onCollectResource={handleCollectResource}
+          placementMode={placementMode !== null}
+          availablePositions={availablePositions}
+          onPositionSelect={handlePositionSelect}
         />
       </div>
 
