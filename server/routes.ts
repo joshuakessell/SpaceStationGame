@@ -1334,6 +1334,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // EQUIPMENT SYSTEM (Phase 8)
+  // ============================================================================
+
+  // Craft equipment
+  app.post("/api/equipment/craft", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { equipmentId } = req.body;
+      
+      if (!equipmentId) {
+        return res.status(400).json({ message: "Missing equipmentId" });
+      }
+      
+      await storage.craftEquipment(userId, equipmentId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error crafting equipment:", error);
+      res.status(400).json({ message: error.message || "Failed to craft equipment" });
+    }
+  });
+
+  // Equip item to ship
+  app.post("/api/equipment/equip", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { shipId, equipmentId, slot } = req.body;
+      
+      if (!shipId || !equipmentId || !slot) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      await storage.equipItem(shipId, equipmentId, slot);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error equipping item:", error);
+      res.status(400).json({ message: error.message || "Failed to equip item" });
+    }
+  });
+
+  // Get player equipment
+  app.get("/api/equipment", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const equipment = await storage.getPlayerEquipment(userId);
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error fetching equipment:", error);
+      res.status(500).json({ message: "Failed to fetch equipment" });
+    }
+  });
+
+  // Get ship equipment
+  app.get("/api/ships/:id/equipment", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const ship = await storage.getShipById(id);
+      if (!ship || ship.playerId !== userId) {
+        return res.status(404).json({ message: "Ship not found" });
+      }
+      
+      const equipment = await storage.getShipEquipment(id);
+      res.json(equipment);
+    } catch (error) {
+      console.error("Error fetching ship equipment:", error);
+      res.status(500).json({ message: "Failed to fetch ship equipment" });
+    }
+  });
+
+  // ============================================================================
+  // COMBAT MISSIONS (Phase 9)
+  // ============================================================================
+
+  // Get available combat missions
+  app.get("/api/missions/available", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const missions = await storage.getAvailableCombatMissions(userId);
+      res.json(missions);
+    } catch (error) {
+      console.error("Error fetching available missions:", error);
+      res.status(500).json({ message: "Failed to fetch available missions" });
+    }
+  });
+
+  // Start combat mission
+  app.post("/api/missions/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { missionId } = req.body;
+      
+      if (!missionId) {
+        return res.status(400).json({ message: "Missing missionId" });
+      }
+      
+      const battle = await storage.startCombatMission(userId, missionId);
+      res.json(battle);
+    } catch (error: any) {
+      console.error("Error starting combat mission:", error);
+      res.status(400).json({ message: error.message || "Failed to start combat mission" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

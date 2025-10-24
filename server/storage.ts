@@ -13,6 +13,9 @@ import {
   playerTechUnlocks,
   ships,
   battles,
+  equipment,
+  shipEquipment,
+  combatMissions,
   DRONE_UPGRADE_CONFIG,
   ARRAY_UPGRADE_CONFIG,
   ARRAY_TIERS,
@@ -22,6 +25,8 @@ import {
   MODULE_UNLOCK_REQUIREMENTS,
   RESEARCH_TREE,
   SHIP_CHASSIS,
+  EQUIPMENT_CATALOG,
+  BOSS_ENCOUNTERS,
   calculateShipStats,
   type User, 
   type UpsertUser,
@@ -44,7 +49,11 @@ import {
   type PlayerTechUnlock,
   type Ship,
   type Battle,
-  type InsertBattle
+  type InsertBattle,
+  type Equipment,
+  type InsertEquipment,
+  type ShipEquipment,
+  type CombatMission
 } from "@shared/schema";
 import { calculateResearchBonuses, type ResearchBonuses } from "./bonus-system";
 import { simulateBattle, generateAIFleet, type AIFleetConfig } from "./combat-engine";
@@ -154,6 +163,16 @@ export interface IStorage {
 
   // Battle initiation workflow (Phase 7.8)
   startBattle(playerId: string, difficulty: "easy" | "medium" | "hard"): Promise<Battle>;
+
+  // Equipment system (Phase 8)
+  craftEquipment(playerId: string, catalogId: string): Promise<void>;
+  equipItem(shipId: string, equipmentId: string, slot: string): Promise<void>;
+  getShipEquipment(shipId: string): Promise<any[]>;
+  getPlayerEquipment(playerId: string): Promise<any[]>;
+
+  // Combat missions (Phase 8+9)
+  startCombatMission(playerId: string, bossId: string): Promise<Battle>;
+  getAvailableCombatMissions(playerId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1304,6 +1323,188 @@ export class DatabaseStorage implements IStorage {
       
       return battle;
     });
+  }
+
+  async craftEquipment(playerId: string, catalogId: string): Promise<void> {
+    return await db.transaction(async (tx) => {
+      const catalogItem = EQUIPMENT_CATALOG.find(item => item.id === catalogId);
+      if (!catalogItem) {
+        throw new Error(`Equipment catalog item not found: ${catalogId}`);
+      }
+
+      const [player] = await tx.select().from(players).where(eq(players.id, playerId));
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      if (player.metal < catalogItem.cost.metal ||
+          player.crystals < catalogItem.cost.crystals ||
+          player.credits < catalogItem.cost.credits) {
+        throw new Error('Insufficient resources');
+      }
+
+      await tx
+        .update(players)
+        .set({
+          metal: player.metal - catalogItem.cost.metal,
+          crystals: player.crystals - catalogItem.cost.crystals,
+          credits: player.credits - catalogItem.cost.credits,
+        })
+        .where(eq(players.id, playerId));
+
+      await tx.insert(equipment).values({
+        playerId,
+        catalogId,
+        name: catalogItem.name,
+        type: catalogItem.type,
+        bonusHull: catalogItem.bonusHull || 0,
+        bonusShields: catalogItem.bonusShields || 0,
+        bonusDamage: catalogItem.bonusDamage || 0,
+      });
+    });
+  }
+
+  async equipItem(shipId: string, equipmentId: string, slot: string): Promise<void> {
+    return await db.transaction(async (tx) => {
+      const [ship] = await tx.select().from(ships).where(eq(ships.id, shipId));
+      if (!ship) {
+        throw new Error('Ship not found');
+      }
+
+      const [equipmentItem] = await tx.select().from(equipment).where(eq(equipment.id, equipmentId));
+      if (!equipmentItem) {
+        throw new Error('Equipment not found');
+      }
+
+      if (equipmentItem.playerId !== ship.playerId) {
+        throw new Error('Equipment does not belong to ship owner');
+      }
+
+      const existingInSlot = await tx
+        .select()
+        .from(shipEquipment)
+        .where(and(eq(shipEquipment.shipId, shipId), eq(shipEquipment.slot, slot)))
+        .limit(1);
+
+      if (existingInSlot.length > 0) {
+        await tx.delete(shipEquipment).where(eq(shipEquipment.id, existingInSlot[0].id));
+      }
+
+      await tx.insert(shipEquipment).values({
+        shipId,
+        equipmentId,
+        slot,
+      });
+
+      await tx.update(equipment).set({ isEquipped: true }).where(eq(equipment.id, equipmentId));
+    });
+  }
+
+  async getShipEquipment(shipId: string): Promise<any[]> {
+    const results = await db
+      .select({
+        id: shipEquipment.id,
+        slot: shipEquipment.slot,
+        equipmentId: equipment.id,
+        name: equipment.name,
+        type: equipment.type,
+        bonusHull: equipment.bonusHull,
+        bonusShields: equipment.bonusShields,
+        bonusDamage: equipment.bonusDamage,
+      })
+      .from(shipEquipment)
+      .innerJoin(equipment, eq(shipEquipment.equipmentId, equipment.id))
+      .where(eq(shipEquipment.shipId, shipId));
+
+    return results;
+  }
+
+  async getPlayerEquipment(playerId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(equipment)
+      .where(eq(equipment.playerId, playerId));
+
+    return results;
+  }
+
+  async startCombatMission(playerId: string, bossId: string): Promise<Battle> {
+    return await db.transaction(async (tx) => {
+      const bossEncounter = BOSS_ENCOUNTERS.find(boss => boss.id === bossId);
+      if (!bossEncounter) {
+        throw new Error(`Boss encounter not found: ${bossId}`);
+      }
+
+      const fleet = await this.getFleetComposition(playerId);
+      
+      if (fleet.offense.length === 0) {
+        throw new Error("No ships assigned to offensive fleet");
+      }
+
+      const bonuses = await this.getPlayerResearchBonuses(playerId);
+      const result = simulateBattle(fleet.offense, bossEncounter.fleet, bonuses);
+
+      const rewards = result.victory ? bossEncounter.rewards : { metal: 0, crystals: 0, credits: 0 };
+
+      const [battle] = await tx
+        .insert(battles)
+        .values({
+          playerId,
+          playerFleet: JSON.stringify(fleet.offense.map(s => s.id)),
+          enemyFleet: JSON.stringify(bossEncounter.fleet),
+          status: result.victory ? "victory" : "defeat",
+          battleLog: JSON.stringify(result.log),
+          rewards: JSON.stringify(rewards),
+          completedAt: new Date(),
+        })
+        .returning();
+
+      await tx.insert(combatMissions).values({
+        playerId,
+        missionId: bossId,
+        missionType: "boss",
+        difficulty: "boss",
+        status: result.victory ? "completed" : "failed",
+        rewards: JSON.stringify(rewards),
+        battleId: battle.id,
+        completedAt: new Date(),
+      });
+
+      for (const ship of fleet.offense) {
+        if (result.destroyedPlayerShips.includes(ship.id)) {
+          await tx.update(ships).set({ isDestroyed: true }).where(eq(ships.id, ship.id));
+        }
+      }
+
+      if (result.victory) {
+        await tx
+          .update(players)
+          .set({
+            metal: sql`${players.metal} + ${rewards.metal}`,
+            crystals: sql`${players.crystals} + ${rewards.crystals}`,
+            credits: sql`${players.credits} + ${rewards.credits}`,
+          })
+          .where(eq(players.id, playerId));
+      }
+
+      return battle;
+    });
+  }
+
+  async getAvailableCombatMissions(playerId: string): Promise<any[]> {
+    const completedMissions = await db
+      .select({ missionId: combatMissions.missionId })
+      .from(combatMissions)
+      .where(
+        and(
+          eq(combatMissions.playerId, playerId),
+          eq(combatMissions.status, "completed")
+        )
+      );
+
+    const completedIds = new Set(completedMissions.map(m => m.missionId));
+
+    return BOSS_ENCOUNTERS.filter(boss => !completedIds.has(boss.id));
   }
 }
 

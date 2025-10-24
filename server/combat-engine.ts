@@ -126,6 +126,27 @@ export function simulateBattle(
   };
 }
 
+export function calculateShipStatsWithEquipment(
+  ship: Ship,
+  bonuses: ResearchBonuses,
+  equipmentBonuses: { hull: number; shields: number; damage: number }
+): BattleShip {
+  const chassis = SHIP_CHASSIS.find(c => c.id === ship.chassisId)!;
+  const baseStats = calculateShipStats(ship.chassisId, bonuses);
+  
+  return {
+    id: ship.id,
+    chassisId: ship.chassisId,
+    name: ship.name || chassis.name,
+    currentHull: ship.currentHull,
+    currentShields: ship.currentShields,
+    maxHull: baseStats.maxHull + equipmentBonuses.hull,
+    maxShields: baseStats.maxShields + equipmentBonuses.shields,
+    weaponDamage: baseStats.weaponDamage + equipmentBonuses.damage,
+    speed: baseStats.speed,
+  };
+}
+
 export interface AIFleetConfig {
   difficulty: "easy" | "medium" | "hard";
   shipCount: number;

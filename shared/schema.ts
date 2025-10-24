@@ -737,6 +737,140 @@ export const battles = pgTable("battles", {
 ]);
 
 // ============================================================================
+// EQUIPMENT SYSTEM (Phase 8)
+// ============================================================================
+
+// Equipment catalog items
+export const equipment = pgTable("equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  playerId: varchar("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  catalogId: varchar("catalog_id").notNull(),
+  name: varchar("name").notNull(),
+  type: varchar("type").notNull(),
+  bonusHull: integer("bonus_hull").default(0),
+  bonusShields: integer("bonus_shields").default(0),
+  bonusDamage: integer("bonus_damage").default(0),
+  isEquipped: boolean("is_equipped").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_equipment_player_id").on(table.playerId),
+  index("idx_equipment_catalog_id").on(table.catalogId),
+]);
+
+// Ship equipment assignments
+export const shipEquipment = pgTable("ship_equipment", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  shipId: varchar("ship_id").notNull().references(() => ships.id, { onDelete: "cascade" }),
+  equipmentId: varchar("equipment_id").notNull().references(() => equipment.id, { onDelete: "cascade" }),
+  slot: varchar("slot").notNull(),
+  equippedAt: timestamp("equipped_at").defaultNow().notNull(),
+}, (table) => [
+  index("idx_ship_equipment_ship_id").on(table.shipId),
+  index("idx_ship_equipment_equipment_id").on(table.equipmentId),
+]);
+
+// Combat missions (boss battles, story missions) - separate from mining missions
+export const combatMissions = pgTable("combat_missions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  playerId: varchar("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  missionId: varchar("mission_id").notNull(),
+  missionType: varchar("mission_type").notNull(),
+  difficulty: varchar("difficulty").notNull(),
+  status: varchar("status").notNull(),
+  rewards: jsonb("rewards"),
+  battleId: varchar("battle_id").references(() => battles.id, { onDelete: "set null" }),
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  completedAt: timestamp("completed_at"),
+}, (table) => [
+  index("idx_combat_missions_player_id").on(table.playerId),
+  index("idx_combat_missions_status").on(table.status),
+]);
+
+// Equipment catalog configuration
+export interface EquipmentCatalogItem {
+  id: string;
+  name: string;
+  type: "weapon" | "shield_booster" | "hull_plating";
+  bonusHull?: number;
+  bonusShields?: number;
+  bonusDamage?: number;
+  cost: { metal: number; crystals: number; credits: number };
+}
+
+export const EQUIPMENT_CATALOG: EquipmentCatalogItem[] = [
+  {
+    id: "plasma_cannon",
+    name: "Plasma Cannon",
+    type: "weapon",
+    bonusDamage: 20,
+    cost: { metal: 300, crystals: 150, credits: 200 },
+  },
+  {
+    id: "laser_array",
+    name: "Laser Array",
+    type: "weapon",
+    bonusDamage: 35,
+    cost: { metal: 600, crystals: 300, credits: 400 },
+  },
+  {
+    id: "shield_amplifier",
+    name: "Shield Amplifier",
+    type: "shield_booster",
+    bonusShields: 100,
+    cost: { metal: 400, crystals: 200, credits: 300 },
+  },
+  {
+    id: "reinforced_plating",
+    name: "Reinforced Hull Plating",
+    type: "hull_plating",
+    bonusHull: 150,
+    cost: { metal: 500, crystals: 100, credits: 250 },
+  },
+];
+
+// Boss encounter configuration
+export interface BossEncounter {
+  id: string;
+  name: string;
+  description: string;
+  difficulty: "boss";
+  fleet: Array<{
+    chassisId: string;
+    maxHull: number;
+    maxShields: number;
+    weaponDamage: number;
+  }>;
+  rewards: { metal: number; crystals: number; credits: number };
+}
+
+export const BOSS_ENCOUNTERS: BossEncounter[] = [
+  {
+    id: "pirate_lord",
+    name: "Pirate Lord Invasion",
+    description: "Defeat the notorious Pirate Lord and his fleet",
+    difficulty: "boss",
+    fleet: [
+      { chassisId: "battleship", maxHull: 2000, maxShields: 1000, weaponDamage: 120 },
+      { chassisId: "cruiser", maxHull: 1200, maxShields: 600, weaponDamage: 90 },
+      { chassisId: "destroyer", maxHull: 800, maxShields: 400, weaponDamage: 70 },
+    ],
+    rewards: { metal: 2000, crystals: 1000, credits: 1500 },
+  },
+  {
+    id: "alien_armada",
+    name: "Alien Armada",
+    description: "Survive the alien invasion force",
+    difficulty: "boss",
+    fleet: [
+      { chassisId: "battleship", maxHull: 3000, maxShields: 1500, weaponDamage: 150 },
+      { chassisId: "battleship", maxHull: 3000, maxShields: 1500, weaponDamage: 150 },
+      { chassisId: "cruiser", maxHull: 1500, maxShields: 750, weaponDamage: 100 },
+    ],
+    rewards: { metal: 5000, crystals: 2500, credits: 3000 },
+  },
+];
+
+// ============================================================================
 // ENDGAME SYSTEMS (Phase 9)
 // ============================================================================
 
@@ -845,6 +979,24 @@ export const insertBattleSchema = createInsertSchema(battles).omit({
   startedAt: true,
 });
 
+export const equipmentSchema = createSelectSchema(equipment);
+export const insertEquipmentSchema = createInsertSchema(equipment).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const shipEquipmentSchema = createSelectSchema(shipEquipment);
+export const insertShipEquipmentSchema = createInsertSchema(shipEquipment).omit({
+  id: true,
+  equippedAt: true,
+});
+
+export const combatMissionSchema = createSelectSchema(combatMissions);
+export const insertCombatMissionSchema = createInsertSchema(combatMissions).omit({
+  id: true,
+  startedAt: true,
+});
+
 // Research tech validation schema
 export const researchTechSchema = z.object({
   id: z.string(),
@@ -897,6 +1049,12 @@ export type ShipLoadout = typeof shipLoadouts.$inferSelect;
 export type Fleet = typeof fleets.$inferSelect;
 export type Battle = typeof battles.$inferSelect;
 export type InsertBattle = z.infer<typeof insertBattleSchema>;
+export type Equipment = typeof equipment.$inferSelect;
+export type InsertEquipment = z.infer<typeof insertEquipmentSchema>;
+export type ShipEquipment = typeof shipEquipment.$inferSelect;
+export type InsertShipEquipment = z.infer<typeof insertShipEquipmentSchema>;
+export type CombatMission = typeof combatMissions.$inferSelect;
+export type InsertCombatMission = z.infer<typeof insertCombatMissionSchema>;
 export type GuildMember = typeof guildMembers.$inferSelect;
 
 // ============================================================================

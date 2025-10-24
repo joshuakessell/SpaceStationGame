@@ -3,6 +3,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { BOSS_ENCOUNTERS } from "@shared/schema";
 import type { Battle } from "@shared/schema";
 
 export function BattleArena() {
@@ -10,6 +11,10 @@ export function BattleArena() {
   
   const { data: battles = [] } = useQuery<Battle[]>({
     queryKey: ["/api/battles"],
+  });
+  
+  const { data: missions = [] } = useQuery<any[]>({ 
+    queryKey: ["/api/missions/available"] 
   });
   
   const startBattleMutation = useMutation({
@@ -33,8 +38,59 @@ export function BattleArena() {
     },
   });
   
+  const startMissionMutation = useMutation({
+    mutationFn: async (missionId: string) => {
+      const res = await apiRequest("POST", "/api/missions/start", { missionId });
+      return res.json();
+    },
+    onSuccess: (battle: Battle) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/missions/available"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/battles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ships"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/player"] });
+      toast({ 
+        title: battle.status === "victory" ? "Mission Success!" : "Mission Failed",
+        variant: battle.status === "victory" ? "default" : "destructive"
+      });
+    },
+    onError: (error: any) => {
+      toast({ title: "Mission failed", description: error.message, variant: "destructive" });
+    },
+  });
+  
   return (
     <div className="space-y-6" data-testid="battle-arena">
+      <Card>
+        <CardHeader>
+          <CardTitle>Boss Encounters</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {missions.length === 0 && (
+            <div className="text-sm text-muted-foreground text-center py-4">
+              No boss missions available yet
+            </div>
+          )}
+          {missions.map((mission: any) => {
+            const boss = BOSS_ENCOUNTERS.find(b => b.id === mission.missionId);
+            if (!boss) return null;
+            return (
+              <div key={mission.id} className="border border-border rounded-md p-3 space-y-2">
+                <div className="font-semibold">{boss.name}</div>
+                <div className="text-sm text-muted-foreground">{boss.description}</div>
+                <div className="text-sm">Rewards: 🔧{boss.rewards.metal} 💎{boss.rewards.crystals} 💰{boss.rewards.credits}</div>
+                <Button 
+                  onClick={() => startMissionMutation.mutate(mission.missionId)}
+                  disabled={startMissionMutation.isPending || mission.status === "completed"}
+                  data-testid={`button-mission-${boss.id}`}
+                >
+                  {mission.status === "completed" ? "Completed" : "Start Mission"}
+                </Button>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Start Battle</CardTitle>
