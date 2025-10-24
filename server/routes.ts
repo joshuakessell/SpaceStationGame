@@ -13,6 +13,12 @@ function calculateAccumulatedResources(building: any, now: Date) {
     return building;
   }
   
+  // DISABLED: metal_mine and crystal_refinery no longer auto-produce resources
+  // Players must use drones for iron and extraction arrays for crystals
+  if (building.buildingType === "metal_mine" || building.buildingType === "crystal_refinery") {
+    return building;
+  }
+  
   // No new resources if not powered
   if (!building.isPowered) {
     return building;
@@ -50,16 +56,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       let player = await storage.getPlayer(userId);
       
-      // If player doesn't exist, create one
+      // DEV MODE: Start with 10000 resources (only on first creation, not every request)
+      const DEV_MODE = process.env.NODE_ENV === "development";
+      
       if (!player) {
-        player = await storage.createPlayer({
-          id: userId,
-          name: "",
-          credits: 100,
-          metal: 50,
-          crystals: 0,
-          tutorialStep: "welcome",
-        });
+        // Create new player
+        if (DEV_MODE) {
+          // Dev mode: start with 10000 of each resource, skip tutorial
+          player = await storage.createPlayer({
+            id: userId,
+            name: "",
+            credits: 10000,
+            metal: 10000,
+            crystals: 10000,
+            exotic: 10000,
+            energyCells: 10000,
+            tutorialStep: "complete",
+          });
+        } else {
+          // Production mode: normal starting resources
+          player = await storage.createPlayer({
+            id: userId,
+            name: "",
+            credits: 100,
+            metal: 50,
+            crystals: 0,
+            tutorialStep: "welcome",
+          });
+        }
       }
       
       res.json(player);

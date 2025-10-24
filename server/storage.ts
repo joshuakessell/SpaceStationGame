@@ -67,6 +67,7 @@ export interface IStorage {
   getPlayer(id: string): Promise<Player | undefined>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayer(id: string, updates: Partial<Player>): Promise<Player>;
+  deletePlayer(id: string): Promise<void>;
   
   // Building operations
   getPlayerBuildings(playerId: string): Promise<Building[]>;
@@ -215,6 +216,11 @@ export class DatabaseStorage implements IStorage {
       .where(eq(players.id, id))
       .returning();
     return player;
+  }
+
+  async deletePlayer(id: string): Promise<void> {
+    // Delete all player-related data (cascade will handle most of it due to FK constraints)
+    await db.delete(players).where(eq(players.id, id));
   }
 
   // Building operations
