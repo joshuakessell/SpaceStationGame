@@ -7,10 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Rocket, Coins, Wrench, Gem, Plus } from "lucide-react";
+import { Rocket, Coins, Wrench, Gem, Plus, Zap, Package, TrendingUp, ArrowUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Drone, Player } from "@shared/schema";
+import { DRONE_UPGRADE_CONFIG, getEffectiveDroneStats, droneTiers } from "@shared/schema";
 
 interface DroneHangarProps {
   open: boolean;
@@ -26,11 +29,36 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
   const { data: drones = [], isLoading } = useQuery<Drone[]>({
     queryKey: ["/api/drones"],
     enabled: open,
+    refetchInterval: open ? 2000 : false, // Poll for upgrade progress updates
   });
 
   const { data: player } = useQuery<Player>({
     queryKey: ["/api/player"],
     enabled: open,
+    refetchInterval: open ? 2000 : false, // Poll for resource updates when dialog is open
+  });
+
+  const upgradeDroneMutation = useMutation({
+    mutationFn: async ({ droneId, type }: { droneId: string; type: "speed" | "cargo" | "harvest" }) => {
+      return await apiRequest("POST", `/api/drones/${droneId}/upgrade`, { type });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["/api/drones"] }),
+        queryClient.invalidateQueries({ queryKey: ["/api/player"] }),
+      ]);
+      toast({
+        title: "Upgrade Started",
+        description: "Your drone upgrade is in progress!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Upgrade Failed",
+        description: error.message || "Failed to start upgrade",
+        variant: "destructive",
+      });
+    },
   });
 
   const buildDroneMutation = useMutation({
@@ -129,6 +157,36 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
       default:
         return status;
     }
+  };
+
+  const calculateUpgradeCost = (upgradeType: "speed" | "cargo" | "harvest", currentLevel: number) => {
+    const baseCost = DRONE_UPGRADE_CONFIG.baseCosts[upgradeType];
+    const multiplier = Math.pow(DRONE_UPGRADE_CONFIG.costMultiplier, currentLevel);
+    return {
+      metal: Math.floor(baseCost.metal * multiplier),
+      credits: Math.floor(baseCost.credits * multiplier),
+    };
+  };
+
+  const getUpgradeProgress = (drone: Drone) => {
+    if (!drone.upgradingType || !drone.upgradeCompletesAt) return null;
+    
+    const now = Date.now();
+    const started = drone.upgradeStartedAt ? new Date(drone.upgradeStartedAt).getTime() : now;
+    const completes = new Date(drone.upgradeCompletesAt).getTime();
+    const total = completes - started;
+    const elapsed = now - started;
+    const progress = Math.min(100, Math.max(0, (elapsed / total) * 100));
+    
+    return {
+      progress,
+      type: drone.upgradingType,
+      remaining: Math.max(0, Math.ceil((completes - now) / 1000)),
+    };
+  };
+
+  const handleUpgrade = (droneId: string, type: "speed" | "cargo" | "harvest") => {
+    upgradeDroneMutation.mutate({ droneId, type });
   };
 
   return (
@@ -275,37 +333,120 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {drones.map((drone) => (
-                  <Card key={drone.id} data-testid={`card-drone-${drone.id}`}>
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <CardTitle className="text-base">{drone.droneName}</CardTitle>
-                          <CardDescription>Mk{drone.tier} Mining Drone</CardDescription>
+                {drones.map((drone) => {
+                  const effectiveStats = getEffectiveDroneStats(drone);
+                  const maxLevel = DRONE_UPGRADE_CONFIG.maxLevelPerTier[drone.tier];
+                  const upgradeProgress = getUpgradeProgress(drone);
+                  
+                  const upgradeTypes: Array<{ type: "speed" | "cargo" | "harvest"; icon: any; label: string; levelKey: keyof Drone }> = [
+                    { type: "speed", icon: Zap, label: "Speed", levelKey: "speedLevel" },
+                    { type: "cargo", icon: Package, label: "Cargo", levelKey: "cargoLevel" },
+                    { type: "harvest", icon: TrendingUp, label: "Harvest", levelKey: "harvestLevel" },
+                  ];
+                  
+                  return (
+                    <Card key={drone.id} data-testid={`card-drone-${drone.id}`}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <CardTitle className="text-base">{drone.droneName}</CardTitle>
+                            <CardDescription>Mk{drone.tier} Mining Drone</CardDescription>
+                          </div>
+                          <Badge variant={getStatusColor(drone.status)} data-testid={`badge-status-${drone.id}`}>
+                            {getStatusLabel(drone.status)}
+                          </Badge>
                         </div>
-                        <Badge variant={getStatusColor(drone.status)} data-testid={`badge-status-${drone.id}`}>
-                          {getStatusLabel(drone.status)}
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div>
-                          <div className="text-muted-foreground text-xs">Speed</div>
-                          <div className="font-semibold">{drone.travelSpeed} km/s</div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        {/* Current Stats */}
+                        <div className="grid grid-cols-3 gap-2 text-sm">
+                          <div>
+                            <div className="text-muted-foreground text-xs">Speed</div>
+                            <div className="font-semibold" data-testid={`text-speed-${drone.id}`}>
+                              {effectiveStats.speed.toFixed(1)} km/s
+                            </div>
+                            {drone.speedLevel > 0 && (
+                              <div className="text-xs text-green-600">+{(drone.speedLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel * 100).toFixed(0)}%</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground text-xs">Cargo</div>
+                            <div className="font-semibold" data-testid={`text-cargo-${drone.id}`}>
+                              {Math.floor(effectiveStats.cargoCapacity)}
+                            </div>
+                            {drone.cargoLevel > 0 && (
+                              <div className="text-xs text-green-600">+{(drone.cargoLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel * 100).toFixed(0)}%</div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-muted-foreground text-xs">Harvest</div>
+                            <div className="font-semibold" data-testid={`text-harvest-${drone.id}`}>
+                              {Math.floor(effectiveStats.harvestRate)}/min
+                            </div>
+                            {drone.harvestLevel > 0 && (
+                              <div className="text-xs text-green-600">+{(drone.harvestLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel * 100).toFixed(0)}%</div>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-muted-foreground text-xs">Cargo</div>
-                          <div className="font-semibold">{drone.cargoCapacity}</div>
+
+                        {/* Upgrade Progress (if upgrading) */}
+                        {upgradeProgress && (
+                          <div className="space-y-1" data-testid={`upgrade-progress-${drone.id}`}>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                Upgrading {upgradeProgress.type}...
+                              </span>
+                              <span className="font-mono">{upgradeProgress.remaining}s</span>
+                            </div>
+                            <Progress value={upgradeProgress.progress} className="h-2" />
+                          </div>
+                        )}
+
+                        <Separator />
+
+                        {/* Upgrade Controls */}
+                        <div className="space-y-2">
+                          <div className="text-xs font-semibold text-muted-foreground">Upgrades</div>
+                          {upgradeTypes.map(({ type, icon: Icon, label, levelKey }) => {
+                            const currentLevel = (drone[levelKey] as number) || 0;
+                            const cost = calculateUpgradeCost(type, currentLevel);
+                            const canAfford = player ? (player.metal >= cost.metal && player.credits >= cost.credits) : false;
+                            const isMaxed = currentLevel >= maxLevel;
+                            const canUpgrade = !isMaxed && drone.status === 'idle' && !drone.upgradingType && canAfford;
+                            
+                            return (
+                              <div key={type} className="flex items-center gap-2">
+                                <div className="flex items-center gap-1 flex-1">
+                                  <Icon className="w-3 h-3 text-muted-foreground" />
+                                  <span className="text-xs">{label}</span>
+                                  <Badge variant="outline" className="text-xs" data-testid={`badge-level-${type}-${drone.id}`}>
+                                    Lv {currentLevel}/{maxLevel}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Wrench className="w-3 h-3" />
+                                  {cost.metal}
+                                  <Coins className="w-3 h-3 ml-1" />
+                                  {cost.credits}
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleUpgrade(drone.id, type)}
+                                  disabled={!canUpgrade || upgradeDroneMutation.isPending}
+                                  className="h-7 px-2"
+                                  data-testid={`button-upgrade-${type}-${drone.id}`}
+                                >
+                                  <ArrowUp className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <div className="text-muted-foreground text-xs">Harvest</div>
-                          <div className="font-semibold">{drone.harvestRate}/min</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

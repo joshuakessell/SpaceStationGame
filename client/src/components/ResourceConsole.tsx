@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Rocket, Zap, TrendingUp, Clock } from "lucide-react";
 import type { Drone, Mission } from "@shared/schema";
+import { getEffectiveDroneStats } from "@shared/schema";
 
 interface ResourceConsoleProps {
   open: boolean;
@@ -121,12 +122,13 @@ export default function ResourceConsole({ open, onOpenChange }: ResourceConsoleP
       if (mission.status === "mining") {
         const drone = drones.find(d => d.id === mission.droneId);
         if (drone) {
-          totalHarvestRate += drone.harvestRate;
+          const effectiveStats = getEffectiveDroneStats(drone);
+          totalHarvestRate += effectiveStats.harvestRate;
         }
       }
     });
     
-    return totalHarvestRate;
+    return Math.floor(totalHarvestRate);
   };
 
   return (
@@ -220,11 +222,11 @@ export default function ResourceConsole({ open, onOpenChange }: ResourceConsoleP
                           </div>
                           <div>
                             <span className="text-muted-foreground">Cargo:</span>{" "}
-                            <span className="font-medium">{drone.cargoCapacity} Iron</span>
+                            <span className="font-medium">{Math.floor(getEffectiveDroneStats(drone).cargoCapacity)} Iron</span>
                           </div>
                           <div>
                             <span className="text-muted-foreground">Harvest:</span>{" "}
-                            <span className="font-medium">{drone.harvestRate}/min</span>
+                            <span className="font-medium">{Math.floor(getEffectiveDroneStats(drone).harvestRate)}/min</span>
                           </div>
                         </div>
                       </div>
@@ -265,7 +267,7 @@ export default function ResourceConsole({ open, onOpenChange }: ResourceConsoleP
                           <Badge variant="secondary">Idle</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Mk{drone.tier} • {drone.cargoCapacity} cargo • {drone.harvestRate}/min
+                          Mk{drone.tier} • {Math.floor(getEffectiveDroneStats(drone).cargoCapacity)} cargo • {Math.floor(getEffectiveDroneStats(drone).harvestRate)}/min
                         </div>
                       </div>
                     ))}

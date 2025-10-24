@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { startMissionTickSystem } from "./mission-tick";
+import { startUpgradeTickSystem } from "./upgrade-tick";
 
 const app = express();
 
@@ -80,5 +81,7 @@ app.use((req, res, next) => {
     log(`serving on port ${port}`);
     // Start mission lifecycle tick system
     startMissionTickSystem();
+    // Start drone upgrade tick system
+    startUpgradeTickSystem();
   });
 })();

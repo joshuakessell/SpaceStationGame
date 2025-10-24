@@ -123,6 +123,30 @@ export const buildings = pgTable("buildings", {
 // MINING SYSTEM (Phase 2-4)
 // ============================================================================
 
+// Drone tiers configuration
+export const droneTiers = [
+  { id: 1, name: "Mk1 Mining Drone", speed: 10, cargoCapacity: 50, harvestRate: 10 },
+  { id: 2, name: "Mk2 Mining Drone", speed: 15, cargoCapacity: 100, harvestRate: 20 },
+  { id: 3, name: "Mk3 Mining Drone", speed: 25, cargoCapacity: 200, harvestRate: 40 },
+];
+
+// Drone upgrade configuration
+export const DRONE_UPGRADE_CONFIG = {
+  maxLevelPerTier: {
+    1: 3,  // T1 drones can upgrade to level 3
+    2: 5,  // T2 drones can upgrade to level 5
+    3: 7,  // T3 drones can upgrade to level 7
+  } as Record<number, number>,
+  bonusPerLevel: 0.10,  // +10% per level
+  baseCosts: {
+    speed: { metal: 50, credits: 20 },
+    cargo: { metal: 30, credits: 15 },
+    harvest: { metal: 40, credits: 18 },
+  },
+  costMultiplier: 1.5,  // Costs scale by 1.5x per level
+  upgradeDuration: 30,  // 30 seconds per upgrade
+};
+
 // Resource nodes: asteroid clusters and crystal rifts
 export const resourceNodes = pgTable("resource_nodes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -163,6 +187,14 @@ export const drones = pgTable("drones", {
   cargoCapacity: integer("cargo_capacity").notNull(),
   harvestRate: integer("harvest_rate").notNull(), // Resources per minute
   durability: integer("durability").notNull().default(100),
+  // Upgrade levels (Phase 3.7)
+  speedLevel: integer("speed_level").notNull().default(0),
+  cargoLevel: integer("cargo_level").notNull().default(0),
+  harvestLevel: integer("harvest_level").notNull().default(0),
+  // Ongoing upgrade tracking (Phase 3.7)
+  upgradingType: varchar("upgrading_type"), // "speed" | "cargo" | "harvest" | null
+  upgradeStartedAt: timestamp("upgrade_started_at"),
+  upgradeCompletesAt: timestamp("upgrade_completes_at"),
   // Current state
   status: text("status").notNull().default("idle"), // idle, traveling, mining, returning
   currentMissionId: varchar("current_mission_id"), // No FK to avoid circular reference; managed by application
@@ -469,3 +501,25 @@ export type ShipLoadout = typeof shipLoadouts.$inferSelect;
 export type Fleet = typeof fleets.$inferSelect;
 export type Battle = typeof battles.$inferSelect;
 export type GuildMember = typeof guildMembers.$inferSelect;
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+// Helper to calculate effective drone stats with upgrades applied
+export function getEffectiveDroneStats(drone: Drone) {
+  const baseTier = droneTiers.find(t => t.id === drone.tier);
+  if (!baseTier) {
+    return {
+      speed: drone.travelSpeed,
+      cargoCapacity: drone.cargoCapacity,
+      harvestRate: drone.harvestRate,
+    };
+  }
+  
+  return {
+    speed: baseTier.speed * (1 + drone.speedLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel),
+    cargoCapacity: baseTier.cargoCapacity * (1 + drone.cargoLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel),
+    harvestRate: baseTier.harvestRate * (1 + drone.harvestLevel * DRONE_UPGRADE_CONFIG.bonusPerLevel),
+  };
+}

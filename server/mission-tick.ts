@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { log } from "./vite";
+import { getEffectiveDroneStats } from "@shared/schema";
 
 /**
  * Mission Lifecycle Tick System
@@ -82,13 +83,16 @@ async function completeMission(missionId: string, playerId: string) {
   const drone = await storage.getDrone(mission.droneId);
   if (!drone) return;
   
+  // Use effective stats (with upgrades applied)
+  const effectiveStats = getEffectiveDroneStats(drone);
+  
   const result = await storage.atomicCompleteMission(
     missionId,
     "returning",
     playerId,
     mission.targetNodeId,
     mission.droneId,
-    drone.cargoCapacity
+    effectiveStats.cargoCapacity
   );
   
   if (!result.success) {

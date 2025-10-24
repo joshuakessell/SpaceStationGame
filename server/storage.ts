@@ -7,6 +7,7 @@ import {
   resourceNodes,
   drones,
   missions,
+  DRONE_UPGRADE_CONFIG,
   type User, 
   type UpsertUser,
   type Player,
@@ -49,6 +50,8 @@ export interface IStorage {
   createDrone(drone: InsertDrone): Promise<Drone>;
   updateDrone(id: string, updates: Partial<Drone>): Promise<Drone>;
   getDrone(id: string): Promise<Drone | undefined>;
+  upgradeDrone(droneId: string, upgradeType: "speed" | "cargo" | "harvest"): Promise<void>;
+  completeDroneUpgrade(droneId: string): Promise<void>;
 
   // Mission operations
   getPlayerMissions(playerId: string): Promise<Mission[]>;
@@ -203,6 +206,109 @@ export class DatabaseStorage implements IStorage {
   async getDrone(id: string): Promise<Drone | undefined> {
     const [drone] = await db.select().from(drones).where(eq(drones.id, id));
     return drone;
+  }
+
+  async upgradeDrone(droneId: string, upgradeType: "speed" | "cargo" | "harvest"): Promise<void> {
+    return await db.transaction(async (tx) => {
+      // Get drone with lock
+      const [drone] = await tx
+        .select()
+        .from(drones)
+        .where(eq(drones.id, droneId))
+        .for('update');
+
+      if (!drone) {
+        throw new Error('Drone not found');
+      }
+
+      // Check drone is idle and not already upgrading
+      if (drone.status !== 'idle') {
+        throw new Error('Drone must be idle to upgrade');
+      }
+      if (drone.upgradingType) {
+        throw new Error('Drone is already upgrading');
+      }
+
+      // Get current level for this upgrade type
+      const levelField = `${upgradeType}Level` as keyof Drone;
+      const currentLevel = drone[levelField] as number;
+
+      // Check max level
+      const maxLevel = DRONE_UPGRADE_CONFIG.maxLevelPerTier[drone.tier];
+      if (currentLevel >= maxLevel) {
+        throw new Error(`Upgrade already at max level (${maxLevel}) for this drone tier`);
+      }
+
+      // Calculate cost
+      const baseCost = DRONE_UPGRADE_CONFIG.baseCosts[upgradeType];
+      const multiplier = Math.pow(DRONE_UPGRADE_CONFIG.costMultiplier, currentLevel);
+      const cost = {
+        metal: Math.floor(baseCost.metal * multiplier),
+        credits: Math.floor(baseCost.credits * multiplier),
+      };
+
+      // Get player and check resources
+      const [player] = await tx
+        .select()
+        .from(players)
+        .where(eq(players.id, drone.playerId));
+
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      if (player.metal < cost.metal || player.credits < cost.credits) {
+        throw new Error(`Insufficient resources. Need ${cost.metal} metal and ${cost.credits} credits`);
+      }
+
+      // Deduct resources
+      await tx
+        .update(players)
+        .set({
+          metal: player.metal - cost.metal,
+          credits: player.credits - cost.credits,
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(players.id, drone.playerId));
+
+      // Set upgrading fields
+      const now = new Date();
+      const completesAt = new Date(now.getTime() + DRONE_UPGRADE_CONFIG.upgradeDuration * 1000);
+
+      await tx
+        .update(drones)
+        .set({
+          upgradingType: upgradeType,
+          upgradeStartedAt: now,
+          upgradeCompletesAt: completesAt,
+        })
+        .where(eq(drones.id, droneId));
+    });
+  }
+
+  async completeDroneUpgrade(droneId: string): Promise<void> {
+    const drone = await this.getDrone(droneId);
+    if (!drone || !drone.upgradingType) {
+      return;
+    }
+
+    // Determine which level to increment
+    const upgradeType = drone.upgradingType;
+    const updates: Partial<Drone> = {
+      upgradingType: null,
+      upgradeStartedAt: null,
+      upgradeCompletesAt: null,
+    };
+
+    if (upgradeType === 'speed') {
+      updates.speedLevel = drone.speedLevel + 1;
+    } else if (upgradeType === 'cargo') {
+      updates.cargoLevel = drone.cargoLevel + 1;
+    } else if (upgradeType === 'harvest') {
+      updates.harvestLevel = drone.harvestLevel + 1;
+    }
+
+    await this.updateDrone(droneId, updates);
   }
 
   // Mission operations

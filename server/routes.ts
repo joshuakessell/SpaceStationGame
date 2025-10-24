@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPlayerSchema, insertBuildingSchema, updatePlayerSchema, updateBuildingSchema } from "@shared/schema";
+import { insertPlayerSchema, insertBuildingSchema, updatePlayerSchema, updateBuildingSchema, getEffectiveDroneStats } from "@shared/schema";
 import { z } from "zod";
 
 // Helper function to calculate accumulated resources
@@ -445,13 +445,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Cluster is depleted" });
       }
 
-      // Calculate timing based on distance and drone speed
+      // Calculate timing based on distance and drone speed (use effective stats with upgrades)
+      const effectiveStats = getEffectiveDroneStats(drone);
       const distanceKm = cluster.distanceClass === 'short' ? 100 : cluster.distanceClass === 'mid' ? 300 : 600;
-      const travelTimeSec = distanceKm / drone.travelSpeed;
+      const travelTimeSec = distanceKm / effectiveStats.speed;
       
       // Calculate mining time based on how much we can harvest
-      const amountToHarvest = Math.min(drone.cargoCapacity, cluster.remainingIron);
-      const miningTimeSec = amountToHarvest / drone.harvestRate;
+      const amountToHarvest = Math.min(effectiveStats.cargoCapacity, cluster.remainingIron);
+      const miningTimeSec = amountToHarvest / effectiveStats.harvestRate;
 
       const now = new Date();
       const arrivalAt = new Date(now.getTime() + travelTimeSec * 1000);
@@ -485,6 +486,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error assigning drone:", error);
       res.status(500).json({ message: "Failed to assign drone" });
+    }
+  });
+
+  // Upgrade a drone
+  app.post('/api/drones/:id/upgrade', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: droneId } = req.params;
+      const { type } = req.body;
+
+      // Validate upgrade type
+      if (!type || !['speed', 'cargo', 'harvest'].includes(type)) {
+        return res.status(400).json({ message: "Invalid upgrade type. Must be 'speed', 'cargo', or 'harvest'" });
+      }
+
+      // Get drone
+      const drone = await storage.getDrone(droneId);
+      if (!drone || drone.playerId !== userId) {
+        return res.status(404).json({ message: "Drone not found" });
+      }
+
+      // Attempt upgrade
+      await storage.upgradeDrone(droneId, type as "speed" | "cargo" | "harvest");
+
+      res.json({ success: true, message: `${type} upgrade started` });
+    } catch (error: any) {
+      console.error("Error upgrading drone:", error);
+      res.status(400).json({ message: error.message || "Failed to upgrade drone" });
     }
   });
 
