@@ -13,6 +13,8 @@ import { RiftScanner } from "@/components/RiftScanner";
 import { ArrayBay } from "@/components/ArrayBay";
 import PowerManagement from "@/components/PowerManagement";
 import { ResearchBay } from "@/components/ResearchBay";
+import { Shipyard } from "@/components/Shipyard";
+import { BattleArena } from "@/components/Battle";
 import { Settings, Swords, Rocket, Activity, Zap, Flask } from "lucide-react";
 import type { Player, Building } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -50,6 +52,8 @@ export default function Game() {
   const [showArrayBay, setShowArrayBay] = useState(false);
   const [showPowerManagement, setShowPowerManagement] = useState(false);
   const [showResearchBay, setShowResearchBay] = useState(false);
+  const [showShipyard, setShowShipyard] = useState(false);
+  const [showBattle, setShowBattle] = useState(false);
 
   // Fetch player data
   const { data: player, isLoading: playerLoading } = useQuery<Player>({
@@ -423,7 +427,19 @@ export default function Game() {
                 <Flask className="w-5 h-5 mr-2" />
                 Research
               </Button>
-              <Button variant="default" data-testid="button-battle">
+              <Button 
+                variant="default" 
+                onClick={() => setShowShipyard(true)}
+                data-testid="nav-shipyard"
+              >
+                <Rocket className="w-5 h-5 mr-2" />
+                Shipyard
+              </Button>
+              <Button 
+                variant="default" 
+                onClick={() => setShowBattle(true)}
+                data-testid="nav-battle"
+              >
                 <Swords className="w-5 h-5 mr-2" />
                 Battle
               </Button>
@@ -561,6 +577,34 @@ export default function Game() {
               </Button>
             </div>
             <ResearchBay />
+          </div>
+        </div>
+      )}
+
+      {/* Shipyard Dialog */}
+      {showShipyard && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="max-w-6xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowShipyard(false)} data-testid="button-close-shipyard">
+                ✕
+              </Button>
+            </div>
+            <Shipyard />
+          </div>
+        </div>
+      )}
+
+      {/* Battle Arena Dialog */}
+      {showBattle && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowBattle(false)} data-testid="button-close-battle">
+                ✕
+              </Button>
+            </div>
+            <BattleArena />
           </div>
         </div>
       )}

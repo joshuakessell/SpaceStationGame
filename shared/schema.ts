@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, integer, boolean, timestamp, real, jsonb, index } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // ============================================================================
@@ -268,7 +268,7 @@ export const BUILDING_POWER_COSTS = {
   rift_scanner: 5,
   array_bay: 4,
   research_bay: 15, // Phase 6: Moderate power consumption for research facility
-  shipyard: 15, // Phase 7
+  shipyard: 20, // Phase 7: Higher power for ship construction facility
   power_module: 0, // Power modules don't consume power
 } as const;
 
@@ -277,6 +277,7 @@ export const MODULE_UNLOCK_REQUIREMENTS: Record<string, { hubLevel: number; desc
   "drone_hangar": { hubLevel: 1, description: "Available from start" },
   "array_bay": { hubLevel: 1, description: "Available from start" },
   "research_bay": { hubLevel: 3, description: "Unlocked at Central Hub Level 3" },
+  "shipyard": { hubLevel: 5, description: "Unlocked at Central Hub Level 5" },
   // Power modules have tier gating via POWER_MODULE_TIERS
 };
 
@@ -419,6 +420,103 @@ export const RESEARCH_TREE: ResearchTech[] = [
     duration: 120,
     prerequisites: [],
     bonuses: { researchCost: 0.10 },
+  },
+];
+
+// ============================================================================
+// SHIP CHASSIS SYSTEM (Phase 7.1)
+// ============================================================================
+
+export interface ShipChassis {
+  id: string;
+  name: string;
+  description: string;
+  baseStats: {
+    maxHull: number;
+    maxShields: number;
+    weaponDamage: number;
+    speed: number;
+  };
+  cost: {
+    metal: number;
+    crystals: number;
+    credits: number;
+  };
+  buildTime: number;
+}
+
+export const SHIP_CHASSIS: ShipChassis[] = [
+  {
+    id: "fighter",
+    name: "Fighter",
+    description: "Fast, agile ship with light armament",
+    baseStats: { maxHull: 100, maxShields: 50, weaponDamage: 15, speed: 100 },
+    cost: { metal: 150, crystals: 50, credits: 100 },
+    buildTime: 60,
+  },
+  {
+    id: "interceptor",
+    name: "Interceptor",
+    description: "Ultra-fast scout with minimal defenses",
+    baseStats: { maxHull: 80, maxShields: 30, weaponDamage: 10, speed: 150 },
+    cost: { metal: 100, crystals: 30, credits: 75 },
+    buildTime: 45,
+  },
+  {
+    id: "bomber",
+    name: "Bomber",
+    description: "Heavy weapons platform with weak defenses",
+    baseStats: { maxHull: 120, maxShields: 40, weaponDamage: 40, speed: 60 },
+    cost: { metal: 250, crystals: 100, credits: 150 },
+    buildTime: 90,
+  },
+  {
+    id: "corvette",
+    name: "Corvette",
+    description: "Balanced light warship",
+    baseStats: { maxHull: 200, maxShields: 100, weaponDamage: 20, speed: 80 },
+    cost: { metal: 300, crystals: 150, credits: 200 },
+    buildTime: 120,
+  },
+  {
+    id: "frigate",
+    name: "Frigate",
+    description: "Medium warship with strong firepower",
+    baseStats: { maxHull: 350, maxShields: 150, weaponDamage: 35, speed: 70 },
+    cost: { metal: 500, crystals: 250, credits: 350 },
+    buildTime: 180,
+  },
+  {
+    id: "destroyer",
+    name: "Destroyer",
+    description: "Heavy warship with powerful weapons",
+    baseStats: { maxHull: 500, maxShields: 250, weaponDamage: 50, speed: 50 },
+    cost: { metal: 800, crystals: 400, credits: 600 },
+    buildTime: 240,
+  },
+  {
+    id: "cruiser",
+    name: "Cruiser",
+    description: "Capital ship with massive firepower",
+    baseStats: { maxHull: 800, maxShields: 400, weaponDamage: 70, speed: 40 },
+    cost: { metal: 1200, crystals: 600, credits: 900 },
+    buildTime: 360,
+  },
+  {
+    id: "battleship",
+    name: "Battleship",
+    description: "Massive dreadnought with devastating weapons",
+    baseStats: { maxHull: 1500, maxShields: 800, weaponDamage: 100, speed: 30 },
+    cost: { metal: 2000, crystals: 1000, credits: 1500 },
+    buildTime: 600,
+  },
+  {
+    id: "support",
+    name: "Support Ship",
+    description: "Defensive vessel with strong shields",
+    baseStats: { maxHull: 300, maxShields: 300, weaponDamage: 15, speed: 60 },
+    cost: { metal: 400, crystals: 200, credits: 300 },
+    buildTime: 150,
   },
 ];
 
@@ -577,32 +675,19 @@ export const playerTechUnlocks = pgTable("player_tech_unlocks", {
 // COMBAT SYSTEM (Phase 7-8)
 // ============================================================================
 
-// Player's built ships
+// Player's built ships (Phase 7.1: Simplified schema for chassis system)
 export const ships = pgTable("ships", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   playerId: varchar("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
-  shipType: text("ship_type").notNull(), // light_scout, shield_guardian, etc.
-  shipName: text("ship_name").notNull(),
-  // Base stats (calculated from chassis + tech + mods)
-  hp: integer("hp").notNull(),
-  maxHp: integer("max_hp").notNull(),
-  shield: integer("shield").notNull(),
-  maxShield: integer("max_shield").notNull(),
-  hullStrength: real("hull_strength").notNull(),
-  initiative: integer("initiative").notNull(),
-  movementSpeed: integer("movement_speed").notNull(),
-  attackSpeed: integer("attack_speed").notNull(),
-  energyRegen: integer("energy_regen").notNull(),
-  energy: integer("energy").notNull(),
-  maxEnergy: integer("max_energy").notNull(),
-  // Combat state
-  isInFleet: boolean("is_in_fleet").notNull().default(false),
-  currentFleetId: varchar("current_fleet_id").references(() => fleets.id, { onDelete: "set null" }),
-  // Metadata
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  chassisId: varchar("chassis_id").notNull(), // References SHIP_CHASSIS.id
+  name: varchar("name"), // Optional custom name
+  currentHull: integer("current_hull").notNull(),
+  currentShields: integer("current_shields").notNull(),
+  fleetRole: varchar("fleet_role"), // "offense", "defense", "reserve"
+  isDestroyed: boolean("is_destroyed").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 }, (table) => [
   index("idx_ships_player_id").on(table.playerId),
-  index("idx_ships_fleet_id").on(table.currentFleetId),
 ]);
 
 // Ship loadouts: weapons and mods equipped
@@ -635,28 +720,17 @@ export const fleets = pgTable("fleets", {
   index("idx_fleets_player_id").on(table.playerId),
 ]);
 
-// Battle records
+// Battle records (Phase 7.5: Simplified battle session data model)
 export const battles = pgTable("battles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   playerId: varchar("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
-  battleType: text("battle_type").notNull(), // ai_battle, pvp, tutorial
-  opponentId: varchar("opponent_id"), // Player ID for PvP, null for AI
-  // Outcome
-  status: text("status").notNull(), // in_progress, victory, defeat, draw
-  playerFleetId: varchar("player_fleet_id").notNull().references(() => fleets.id, { onDelete: "restrict" }),
-  opponentFleetId: varchar("opponent_fleet_id"),
-  // Rewards
-  creditsReward: integer("credits_reward").default(0),
-  metalReward: integer("metal_reward").default(0),
-  crystalReward: integer("crystal_reward").default(0),
-  exoticReward: integer("exotic_reward").default(0),
-  // Timing
-  startedAt: timestamp("started_at").notNull().defaultNow(),
+  status: varchar("status").notNull(), // "in_progress", "victory", "defeat"
+  playerFleet: jsonb("player_fleet").notNull(), // Array of ship IDs
+  enemyFleet: jsonb("enemy_fleet").notNull(), // Array of enemy ship configs
+  battleLog: jsonb("battle_log"), // Array of turn events
+  rewards: jsonb("rewards"), // { metal, crystals, credits }
+  startedAt: timestamp("started_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
-  // Battle log (turn-by-turn events)
-  battleLog: jsonb("battle_log"), // Array of combat events
-  // Metadata
-  createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => [
   index("idx_battles_player_id").on(table.playerId),
   index("idx_battles_status").on(table.status),
@@ -759,9 +833,16 @@ export const insertResearchProjectSchema = createInsertSchema(researchProjects).
   createdAt: true,
 });
 
+export const shipSchema = createSelectSchema(ships);
 export const insertShipSchema = createInsertSchema(ships).omit({
   id: true,
   createdAt: true,
+});
+
+export const battleSchema = createSelectSchema(battles);
+export const insertBattleSchema = createInsertSchema(battles).omit({
+  id: true,
+  startedAt: true,
 });
 
 // Research tech validation schema
@@ -815,11 +896,40 @@ export type InsertShip = z.infer<typeof insertShipSchema>;
 export type ShipLoadout = typeof shipLoadouts.$inferSelect;
 export type Fleet = typeof fleets.$inferSelect;
 export type Battle = typeof battles.$inferSelect;
+export type InsertBattle = z.infer<typeof insertBattleSchema>;
 export type GuildMember = typeof guildMembers.$inferSelect;
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
+
+// Ship stats interface for calculated ship statistics
+export interface ShipStats {
+  maxHull: number;
+  maxShields: number;
+  weaponDamage: number;
+  speed: number;
+}
+
+// Helper to calculate effective ship stats with research bonuses applied
+export function calculateShipStats(
+  chassisId: string,
+  bonuses: {
+    hullStrength: number;
+    shieldCapacity: number;
+    weaponDamage: number;
+  }
+): ShipStats {
+  const chassis = SHIP_CHASSIS.find(c => c.id === chassisId);
+  if (!chassis) throw new Error(`Invalid chassis: ${chassisId}`);
+  
+  return {
+    maxHull: Math.floor(chassis.baseStats.maxHull * bonuses.hullStrength),
+    maxShields: Math.floor(chassis.baseStats.maxShields * bonuses.shieldCapacity),
+    weaponDamage: Math.floor(chassis.baseStats.weaponDamage * bonuses.weaponDamage),
+    speed: chassis.baseStats.speed, // Speed not affected by bonuses (for now)
+  };
+}
 
 // Helper to calculate effective drone stats with upgrades applied
 export function getEffectiveDroneStats(drone: Drone) {

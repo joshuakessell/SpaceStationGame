@@ -11,6 +11,8 @@ import {
   extractionArrays,
   researchProjects,
   playerTechUnlocks,
+  ships,
+  battles,
   DRONE_UPGRADE_CONFIG,
   ARRAY_UPGRADE_CONFIG,
   ARRAY_TIERS,
@@ -19,6 +21,8 @@ import {
   BUILDING_POWER_COSTS,
   MODULE_UNLOCK_REQUIREMENTS,
   RESEARCH_TREE,
+  SHIP_CHASSIS,
+  calculateShipStats,
   type User, 
   type UpsertUser,
   type Player,
@@ -37,9 +41,13 @@ import {
   type InsertExtractionArray,
   type ResearchProject,
   type InsertResearchProject,
-  type PlayerTechUnlock
+  type PlayerTechUnlock,
+  type Ship,
+  type Battle,
+  type InsertBattle
 } from "@shared/schema";
 import { calculateResearchBonuses, type ResearchBonuses } from "./bonus-system";
+import { simulateBattle, generateAIFleet, type AIFleetConfig } from "./combat-engine";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -122,6 +130,30 @@ export interface IStorage {
   
   // Bonus system (Phase 6.5)
   getPlayerResearchBonuses(playerId: string): Promise<ResearchBonuses>;
+
+  // Ship construction and management (Phase 7.3)
+  startShipConstruction(playerId: string, chassisId: string, customName?: string): Promise<Ship>;
+  getPlayerShips(playerId: string): Promise<Ship[]>;
+  getShipById(shipId: string): Promise<Ship | null>;
+  updateShipDamage(shipId: string, newHull: number, newShields: number): Promise<void>;
+  destroyShip(shipId: string): Promise<void>;
+
+  // Fleet assignment management (Phase 7.4)
+  assignShipToFleet(shipId: string, fleetRole: "offense" | "defense" | "reserve"): Promise<void>;
+  getFleetComposition(playerId: string): Promise<{
+    offense: Ship[];
+    defense: Ship[];
+    reserve: Ship[];
+  }>;
+
+  // Battle session data model (Phase 7.5)
+  createBattle(playerId: string, playerFleet: string[], enemyFleet: any[]): Promise<Battle>;
+  updateBattleResult(battleId: string, status: string, battleLog: any[], rewards: any): Promise<void>;
+  getBattleById(battleId: string): Promise<Battle | null>;
+  getPlayerBattles(playerId: string): Promise<Battle[]>;
+
+  // Battle initiation workflow (Phase 7.8)
+  startBattle(playerId: string, difficulty: "easy" | "medium" | "hard"): Promise<Battle>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1037,6 +1069,241 @@ export class DatabaseStorage implements IStorage {
   async getPlayerResearchBonuses(playerId: string): Promise<ResearchBonuses> {
     const unlocks = await this.getPlayerTechUnlocks(playerId);
     return calculateResearchBonuses(unlocks);
+  }
+
+  // Ship construction and management (Phase 7.3)
+  async startShipConstruction(playerId: string, chassisId: string, customName?: string): Promise<Ship> {
+    return await db.transaction(async (tx) => {
+      // 1. Validate chassis exists
+      const chassis = SHIP_CHASSIS.find(c => c.id === chassisId);
+      if (!chassis) throw new Error("Invalid chassis type");
+      
+      // 2. Check shipyard exists and is powered
+      const [shipyard] = await tx
+        .select()
+        .from(stationModules)
+        .where(and(
+          eq(stationModules.playerId, playerId),
+          eq(stationModules.moduleType, "shipyard"),
+          eq(stationModules.isBuilt, true)
+        ))
+        .limit(1);
+      
+      if (!shipyard) throw new Error("Shipyard not built");
+      if (!shipyard.isPowered) throw new Error("Shipyard is unpowered");
+      
+      // 3. Get player and validate resources
+      const [player] = await tx
+        .select()
+        .from(players)
+        .where(eq(players.id, playerId))
+        .limit(1);
+      
+      if (!player) throw new Error("Player not found");
+      
+      const cost = chassis.cost;
+      
+      if (player.metal < cost.metal) throw new Error("Insufficient metal");
+      if (player.crystals < cost.crystals) throw new Error("Insufficient crystals");
+      if (player.credits < cost.credits) throw new Error("Insufficient credits");
+      
+      // 4. Deduct resources
+      await tx
+        .update(players)
+        .set({
+          metal: sql`${players.metal} - ${cost.metal}`,
+          crystals: sql`${players.crystals} - ${cost.crystals}`,
+          credits: sql`${players.credits} - ${cost.credits}`,
+        })
+        .where(eq(players.id, playerId));
+      
+      // 5. Get research bonuses to calculate stats
+      const bonuses = await this.getPlayerResearchBonuses(playerId);
+      const stats = calculateShipStats(chassisId, bonuses);
+      
+      // 6. Create ship instance
+      const [ship] = await tx
+        .insert(ships)
+        .values({
+          playerId,
+          chassisId,
+          name: customName || chassis.name,
+          currentHull: stats.maxHull,
+          currentShields: stats.maxShields,
+          fleetRole: "reserve",
+          isDestroyed: false,
+        })
+        .returning();
+      
+      return ship;
+    });
+  }
+
+  async getPlayerShips(playerId: string): Promise<Ship[]> {
+    return await db
+      .select()
+      .from(ships)
+      .where(and(
+        eq(ships.playerId, playerId),
+        eq(ships.isDestroyed, false)
+      ))
+      .orderBy(ships.createdAt);
+  }
+
+  async getShipById(shipId: string): Promise<Ship | null> {
+    const [ship] = await db
+      .select()
+      .from(ships)
+      .where(eq(ships.id, shipId))
+      .limit(1);
+    
+    return ship || null;
+  }
+
+  async updateShipDamage(shipId: string, newHull: number, newShields: number): Promise<void> {
+    await db
+      .update(ships)
+      .set({
+        currentHull: Math.max(0, newHull),
+        currentShields: Math.max(0, newShields),
+        isDestroyed: newHull <= 0,
+      })
+      .where(eq(ships.id, shipId));
+  }
+
+  async destroyShip(shipId: string): Promise<void> {
+    await db
+      .update(ships)
+      .set({ isDestroyed: true })
+      .where(eq(ships.id, shipId));
+  }
+
+  async assignShipToFleet(shipId: string, fleetRole: "offense" | "defense" | "reserve"): Promise<void> {
+    await db
+      .update(ships)
+      .set({ fleetRole })
+      .where(eq(ships.id, shipId));
+  }
+
+  async getFleetComposition(playerId: string): Promise<{
+    offense: Ship[];
+    defense: Ship[];
+    reserve: Ship[];
+  }> {
+    const allShips = await this.getPlayerShips(playerId);
+    
+    return {
+      offense: allShips.filter(s => s.fleetRole === "offense"),
+      defense: allShips.filter(s => s.fleetRole === "defense"),
+      reserve: allShips.filter(s => s.fleetRole === "reserve"),
+    };
+  }
+
+  async createBattle(playerId: string, playerFleet: string[], enemyFleet: any[]): Promise<Battle> {
+    const [battle] = await db
+      .insert(battles)
+      .values({
+        playerId,
+        playerFleet: JSON.stringify(playerFleet),
+        enemyFleet: JSON.stringify(enemyFleet),
+        status: "in_progress",
+        battleLog: null,
+        rewards: null,
+      })
+      .returning();
+    
+    return battle;
+  }
+
+  async updateBattleResult(battleId: string, status: string, battleLog: any[], rewards: any): Promise<void> {
+    await db
+      .update(battles)
+      .set({
+        status,
+        battleLog: JSON.stringify(battleLog),
+        rewards: JSON.stringify(rewards),
+        completedAt: new Date(),
+      })
+      .where(eq(battles.id, battleId));
+  }
+
+  async getBattleById(battleId: string): Promise<Battle | null> {
+    const [battle] = await db
+      .select()
+      .from(battles)
+      .where(eq(battles.id, battleId))
+      .limit(1);
+    
+    return battle || null;
+  }
+
+  async getPlayerBattles(playerId: string): Promise<Battle[]> {
+    return await db
+      .select()
+      .from(battles)
+      .where(eq(battles.playerId, playerId))
+      .orderBy(sql`${battles.startedAt} DESC`)
+      .limit(20);
+  }
+
+  async startBattle(playerId: string, difficulty: "easy" | "medium" | "hard"): Promise<Battle> {
+    return await db.transaction(async (tx) => {
+      const fleet = await this.getFleetComposition(playerId);
+      
+      if (fleet.offense.length === 0) {
+        throw new Error("No ships assigned to offensive fleet");
+      }
+      
+      const aiConfig: AIFleetConfig = {
+        difficulty,
+        shipCount: Math.max(2, Math.floor(fleet.offense.length * 0.8)),
+      };
+      const enemyFleet = generateAIFleet(aiConfig);
+      
+      const bonuses = await this.getPlayerResearchBonuses(playerId);
+      
+      const result = simulateBattle(fleet.offense, enemyFleet, bonuses);
+      
+      const baseRewards = {
+        easy: { metal: 200, crystals: 50, credits: 100 },
+        medium: { metal: 400, crystals: 100, credits: 200 },
+        hard: { metal: 800, crystals: 200, credits: 400 },
+      };
+      
+      const rewards = result.victory ? baseRewards[difficulty] : { metal: 0, crystals: 0, credits: 0 };
+      
+      const [battle] = await tx
+        .insert(battles)
+        .values({
+          playerId,
+          playerFleet: JSON.stringify(fleet.offense.map(s => s.id)),
+          enemyFleet: JSON.stringify(enemyFleet),
+          status: result.victory ? "victory" : "defeat",
+          battleLog: JSON.stringify(result.log),
+          rewards: JSON.stringify(rewards),
+          completedAt: new Date(),
+        })
+        .returning();
+      
+      for (const ship of fleet.offense) {
+        if (result.destroyedPlayerShips.includes(ship.id)) {
+          await tx.update(ships).set({ isDestroyed: true }).where(eq(ships.id, ship.id));
+        }
+      }
+      
+      if (result.victory) {
+        await tx
+          .update(players)
+          .set({
+            metal: sql`${players.metal} + ${rewards.metal}`,
+            crystals: sql`${players.crystals} + ${rewards.crystals}`,
+            credits: sql`${players.credits} + ${rewards.credits}`,
+          })
+          .where(eq(players.id, playerId));
+      }
+      
+      return battle;
+    });
   }
 }
 

@@ -1161,6 +1161,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============================================================================
+  // SHIP CONSTRUCTION SYSTEM (Phase 7.3)
+  // ============================================================================
+
+  // Build a new ship
+  app.post("/api/ships/build", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { chassisId, name } = req.body;
+      
+      if (!chassisId) {
+        return res.status(400).json({ message: "Missing chassisId" });
+      }
+      
+      const ship = await storage.startShipConstruction(userId, chassisId, name);
+      res.json(ship);
+    } catch (error: any) {
+      console.error("Error building ship:", error);
+      res.status(400).json({ message: error.message || "Failed to build ship" });
+    }
+  });
+
+  // Get all ships for authenticated player
+  app.get("/api/ships", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ships = await storage.getPlayerShips(userId);
+      res.json(ships);
+    } catch (error) {
+      console.error("Error fetching ships:", error);
+      res.status(500).json({ message: "Failed to fetch ships" });
+    }
+  });
+
+  // Get a specific ship by ID
+  app.get("/api/ships/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const ship = await storage.getShipById(id);
+      
+      if (!ship) {
+        return res.status(404).json({ message: "Ship not found" });
+      }
+      
+      if (ship.playerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to view this ship" });
+      }
+      
+      res.json(ship);
+    } catch (error) {
+      console.error("Error fetching ship:", error);
+      res.status(500).json({ message: "Failed to fetch ship" });
+    }
+  });
+
+  // Delete a ship (mark as destroyed)
+  app.delete("/api/ships/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const ship = await storage.getShipById(id);
+      
+      if (!ship) {
+        return res.status(404).json({ message: "Ship not found" });
+      }
+      
+      if (ship.playerId !== userId) {
+        return res.status(403).json({ message: "Not authorized to delete this ship" });
+      }
+      
+      await storage.destroyShip(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting ship:", error);
+      res.status(500).json({ message: "Failed to delete ship" });
+    }
+  });
+
+  // ============================================================================
+  // FLEET ASSIGNMENT MANAGEMENT (Phase 7.4)
+  // ============================================================================
+
+  // Assign a ship to a fleet role
+  app.patch("/api/ships/:id/assign", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { fleetRole } = req.body;
+      
+      if (!fleetRole || !["offense", "defense", "reserve"].includes(fleetRole)) {
+        return res.status(400).json({ message: "Invalid fleet role" });
+      }
+      
+      const ship = await storage.getShipById(id);
+      if (!ship || ship.playerId !== userId) {
+        return res.status(404).json({ message: "Ship not found" });
+      }
+      
+      await storage.assignShipToFleet(id, fleetRole);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error assigning ship to fleet:", error);
+      res.status(500).json({ message: "Failed to assign ship to fleet" });
+    }
+  });
+
+  // Get fleet composition
+  app.get("/api/fleet/composition", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const composition = await storage.getFleetComposition(userId);
+      res.json(composition);
+    } catch (error) {
+      console.error("Error fetching fleet composition:", error);
+      res.status(500).json({ message: "Failed to fetch fleet composition" });
+    }
+  });
+
+  // ============================================================================
+  // BATTLE SESSION DATA MODEL (Phase 7.5)
+  // ============================================================================
+
+  // Get all battles for authenticated player
+  app.get("/api/battles", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const battles = await storage.getPlayerBattles(userId);
+      res.json(battles);
+    } catch (error) {
+      console.error("Error fetching battles:", error);
+      res.status(500).json({ message: "Failed to fetch battles" });
+    }
+  });
+
+  // Get a specific battle by ID
+  app.get("/api/battles/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const battle = await storage.getBattleById(id);
+      if (!battle || battle.playerId !== userId) {
+        return res.status(404).json({ message: "Battle not found" });
+      }
+      
+      res.json(battle);
+    } catch (error) {
+      console.error("Error fetching battle:", error);
+      res.status(500).json({ message: "Failed to fetch battle" });
+    }
+  });
+
+  // Start a new battle (Phase 7.8)
+  app.post("/api/battles/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { difficulty } = req.body;
+      
+      if (!difficulty || !["easy", "medium", "hard"].includes(difficulty)) {
+        return res.status(400).json({ message: "Invalid difficulty" });
+      }
+      
+      const battle = await storage.startBattle(userId, difficulty);
+      res.json(battle);
+    } catch (error: any) {
+      console.error("Error starting battle:", error);
+      res.status(400).json({ message: error.message || "Failed to start battle" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
