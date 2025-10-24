@@ -43,8 +43,8 @@ export default function BuildMenu({
   };
 
   return (
-    <Card className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[80vh] z-50 bg-card/95 backdrop-blur" data-testid="build-menu">
-      <CardHeader className="pb-3">
+    <Card className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl z-50 bg-card/95 backdrop-blur flex flex-col max-h-[85vh]" data-testid="build-menu">
+      <CardHeader className="pb-3 shrink-0">
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="font-orbitron text-xl">Station Expansions</CardTitle>
@@ -56,8 +56,8 @@ export default function BuildMenu({
         </div>
       </CardHeader>
 
-      <ScrollArea className="max-h-[60vh]">
-        <CardContent className="space-y-3">
+      <ScrollArea className="flex-1 overflow-auto">
+        <CardContent className="space-y-3 p-4">
           {options.map((option) => {
             const affordable = canAfford(option);
             
