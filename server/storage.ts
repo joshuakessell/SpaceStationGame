@@ -5,6 +5,8 @@ import {
   players, 
   buildings,
   resourceNodes,
+  drones,
+  missions,
   type User, 
   type UpsertUser,
   type Player,
@@ -12,7 +14,11 @@ import {
   type Building,
   type InsertBuilding,
   type ResourceNode,
-  type InsertResourceNode
+  type InsertResourceNode,
+  type Drone,
+  type InsertDrone,
+  type Mission,
+  type InsertMission
 } from "@shared/schema";
 
 export interface IStorage {
@@ -36,6 +42,18 @@ export interface IStorage {
   createResourceNode(node: InsertResourceNode): Promise<ResourceNode>;
   updateResourceNode(id: string, updates: Partial<ResourceNode>): Promise<ResourceNode>;
   getResourceNode(id: string): Promise<ResourceNode | undefined>;
+
+  // Drone operations
+  getPlayerDrones(playerId: string): Promise<Drone[]>;
+  createDrone(drone: InsertDrone): Promise<Drone>;
+  updateDrone(id: string, updates: Partial<Drone>): Promise<Drone>;
+  getDrone(id: string): Promise<Drone | undefined>;
+
+  // Mission operations
+  getPlayerMissions(playerId: string): Promise<Mission[]>;
+  createMission(mission: InsertMission): Promise<Mission>;
+  updateMission(id: string, updates: Partial<Mission>): Promise<Mission>;
+  getMission(id: string): Promise<Mission | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -125,6 +143,54 @@ export class DatabaseStorage implements IStorage {
   async getResourceNode(id: string): Promise<ResourceNode | undefined> {
     const [node] = await db.select().from(resourceNodes).where(eq(resourceNodes.id, id));
     return node;
+  }
+
+  // Drone operations
+  async getPlayerDrones(playerId: string): Promise<Drone[]> {
+    return await db.select().from(drones).where(eq(drones.playerId, playerId));
+  }
+
+  async createDrone(droneData: InsertDrone): Promise<Drone> {
+    const [drone] = await db.insert(drones).values(droneData).returning();
+    return drone;
+  }
+
+  async updateDrone(id: string, updates: Partial<Drone>): Promise<Drone> {
+    const [drone] = await db
+      .update(drones)
+      .set(updates)
+      .where(eq(drones.id, id))
+      .returning();
+    return drone;
+  }
+
+  async getDrone(id: string): Promise<Drone | undefined> {
+    const [drone] = await db.select().from(drones).where(eq(drones.id, id));
+    return drone;
+  }
+
+  // Mission operations
+  async getPlayerMissions(playerId: string): Promise<Mission[]> {
+    return await db.select().from(missions).where(eq(missions.playerId, playerId));
+  }
+
+  async createMission(missionData: InsertMission): Promise<Mission> {
+    const [mission] = await db.insert(missions).values(missionData).returning();
+    return mission;
+  }
+
+  async updateMission(id: string, updates: Partial<Mission>): Promise<Mission> {
+    const [mission] = await db
+      .update(missions)
+      .set(updates)
+      .where(eq(missions.id, id))
+      .returning();
+    return mission;
+  }
+
+  async getMission(id: string): Promise<Mission | undefined> {
+    const [mission] = await db.select().from(missions).where(eq(missions.id, id));
+    return mission;
   }
 }
 

@@ -320,6 +320,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all drones for authenticated player
+  app.get('/api/drones', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const drones = await storage.getPlayerDrones(userId);
+      res.json(drones);
+    } catch (error) {
+      console.error("Error fetching drones:", error);
+      res.status(500).json({ message: "Failed to fetch drones" });
+    }
+  });
+
+  // Create a new drone
+  app.post('/api/drones', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { droneName, tier = 1 } = req.body;
+
+      // Validate drone name
+      if (!droneName || droneName.trim().length === 0) {
+        return res.status(400).json({ message: "Drone name is required" });
+      }
+
+      // Get player and check resources
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      // Check max drones cap
+      const existingDrones = await storage.getPlayerDrones(userId);
+      if (existingDrones.length >= player.maxDrones) {
+        return res.status(400).json({ message: `Maximum drone capacity reached (${player.maxDrones})` });
+      }
+
+      // Define drone costs based on tier
+      const droneCosts: { [key: number]: { credits: number; metal: number; crystals: number } } = {
+        1: { credits: 100, metal: 50, crystals: 0 },
+        2: { credits: 300, metal: 150, crystals: 25 },
+        3: { credits: 600, metal: 300, crystals: 75 },
+      };
+
+      const cost = droneCosts[tier] || droneCosts[1];
+
+      // Check if player has enough resources
+      if (player.credits < cost.credits || player.metal < cost.metal || player.crystals < cost.crystals) {
+        return res.status(400).json({ message: "Insufficient resources" });
+      }
+
+      // Define stats based on tier
+      const statsPerTier: { [key: number]: { speed: number; cargo: number; harvest: number } } = {
+        1: { speed: 10, cargo: 50, harvest: 10 },    // Mk1: slow, small cargo, low harvest
+        2: { speed: 15, cargo: 100, harvest: 20 },   // Mk2: faster, bigger cargo, better harvest
+        3: { speed: 25, cargo: 200, harvest: 40 },   // Mk3: fast, large cargo, high harvest
+      };
+
+      const stats = statsPerTier[tier] || statsPerTier[1];
+
+      // Create the drone
+      const drone = await storage.createDrone({
+        playerId: userId,
+        droneType: 'mining_drone',
+        droneName: droneName.trim(),
+        tier,
+        travelSpeed: stats.speed,
+        cargoCapacity: stats.cargo,
+        harvestRate: stats.harvest,
+        durability: 100,
+        status: 'idle',
+        currentMissionId: null,
+      });
+
+      // Deduct resources from player
+      await storage.updatePlayer(userId, {
+        credits: player.credits - cost.credits,
+        metal: player.metal - cost.metal,
+        crystals: player.crystals - cost.crystals,
+      });
+
+      res.json(drone);
+    } catch (error) {
+      console.error("Error creating drone:", error);
+      res.status(500).json({ message: "Failed to create drone" });
+    }
+  });
+
+  // Assign drone to a cluster (create mining mission)
+  app.post('/api/drones/:id/assign', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id: droneId } = req.params;
+      const { targetNodeId } = req.body;
+
+      // Validate inputs
+      if (!targetNodeId) {
+        return res.status(400).json({ message: "Target cluster is required" });
+      }
+
+      // Get drone
+      const drone = await storage.getDrone(droneId);
+      if (!drone || drone.playerId !== userId) {
+        return res.status(404).json({ message: "Drone not found" });
+      }
+
+      // Check if drone is available
+      if (drone.status !== 'idle') {
+        return res.status(400).json({ message: "Drone is not available" });
+      }
+
+      // Get target cluster
+      const cluster = await storage.getResourceNode(targetNodeId);
+      if (!cluster || cluster.playerId !== userId) {
+        return res.status(404).json({ message: "Cluster not found" });
+      }
+
+      // Check if cluster is discovered
+      if (!cluster.isDiscovered) {
+        return res.status(400).json({ message: "Cluster not yet discovered" });
+      }
+
+      // Check if cluster has resources
+      if (!cluster.remainingIron || cluster.remainingIron <= 0) {
+        return res.status(400).json({ message: "Cluster is depleted" });
+      }
+
+      // Calculate timing based on distance and drone speed
+      const distanceKm = cluster.distanceClass === 'short' ? 100 : cluster.distanceClass === 'mid' ? 300 : 600;
+      const travelTimeSec = distanceKm / drone.travelSpeed;
+      
+      // Calculate mining time based on how much we can harvest
+      const amountToHarvest = Math.min(drone.cargoCapacity, cluster.remainingIron);
+      const miningTimeSec = amountToHarvest / drone.harvestRate;
+
+      const now = new Date();
+      const arrivalAt = new Date(now.getTime() + travelTimeSec * 1000);
+      const completesAt = new Date(arrivalAt.getTime() + miningTimeSec * 1000);
+      const returnAt = new Date(completesAt.getTime() + travelTimeSec * 1000);
+
+      // Create mission
+      const mission = await storage.createMission({
+        playerId: userId,
+        missionType: 'mining_trip',
+        status: 'traveling_out',
+        droneId,
+        arrayId: null,
+        targetNodeId,
+        cargoAmount: 0,
+        cargoType: 'iron',
+        startedAt: now,
+        arrivalAt,
+        completesAt,
+        returnAt,
+        completedAt: null,
+      });
+
+      // Update drone status
+      await storage.updateDrone(droneId, {
+        status: 'traveling',
+        currentMissionId: mission.id,
+      });
+
+      res.json(mission);
+    } catch (error) {
+      console.error("Error assigning drone:", error);
+      res.status(500).json({ message: "Failed to assign drone" });
+    }
+  });
+
+  // Get all missions for authenticated player
+  app.get('/api/missions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const missions = await storage.getPlayerMissions(userId);
+      res.json(missions);
+    } catch (error) {
+      console.error("Error fetching missions:", error);
+      res.status(500).json({ message: "Failed to fetch missions" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

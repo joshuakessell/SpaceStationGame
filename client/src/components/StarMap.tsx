@@ -4,9 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Radar, MapPin, Loader2, Zap } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Radar, MapPin, Loader2, Zap, Rocket } from "lucide-react";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { ResourceNode } from "@shared/schema";
+import { useToast } from "@/hooks/use-toast";
+import { ResourceNode, Drone } from "@shared/schema";
 
 interface StarMapProps {
   open: boolean;
@@ -16,10 +18,18 @@ interface StarMapProps {
 
 export function StarMap({ open, onOpenChange, scannerLevel }: StarMapProps) {
   const [selectedCluster, setSelectedCluster] = useState<ResourceNode | null>(null);
+  const [selectedDroneId, setSelectedDroneId] = useState<string>("");
+  const { toast } = useToast();
 
   // Fetch discovered resource nodes
   const { data: resourceNodes = [], isLoading } = useQuery<ResourceNode[]>({
     queryKey: ["/api/resource-nodes"],
+    enabled: open,
+  });
+
+  // Fetch drones
+  const { data: drones = [] } = useQuery<Drone[]>({
+    queryKey: ["/api/drones"],
     enabled: open,
   });
 
@@ -31,6 +41,31 @@ export function StarMap({ open, onOpenChange, scannerLevel }: StarMapProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/resource-nodes"] });
+    },
+  });
+
+  // Assign drone mutation
+  const assignDroneMutation = useMutation({
+    mutationFn: async ({ droneId, targetNodeId }: { droneId: string; targetNodeId: string }) => {
+      return await apiRequest("POST", `/api/drones/${droneId}/assign`, { targetNodeId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/drones"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/missions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/resource-nodes"] });
+      setSelectedCluster(null);
+      setSelectedDroneId("");
+      toast({
+        title: "Drone Assigned",
+        description: "Your drone is en route to the asteroid cluster!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Assignment Failed",
+        description: error.message || "Failed to assign drone",
+        variant: "destructive",
+      });
     },
   });
 
@@ -246,14 +281,43 @@ export function StarMap({ open, onOpenChange, scannerLevel }: StarMapProps) {
                   )}
                 </div>
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex-col gap-3">
+                <div className="w-full space-y-2">
+                  <label className="text-sm font-medium">Select Drone</label>
+                  <Select value={selectedDroneId} onValueChange={setSelectedDroneId}>
+                    <SelectTrigger data-testid="select-drone">
+                      <SelectValue placeholder="Choose a drone..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {drones.filter(d => d.status === "idle").length === 0 ? (
+                        <SelectItem value="none" disabled>No idle drones available</SelectItem>
+                      ) : (
+                        drones
+                          .filter(d => d.status === "idle")
+                          .map(drone => (
+                            <SelectItem key={drone.id} value={drone.id}>
+                              {drone.droneName} (Mk{drone.tier})
+                            </SelectItem>
+                          ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <Button
-                  disabled={selectedCluster.isDepleted}
+                  disabled={!selectedDroneId || selectedCluster.isDepleted || assignDroneMutation.isPending}
                   className="w-full"
+                  onClick={() => {
+                    if (selectedDroneId && selectedCluster) {
+                      assignDroneMutation.mutate({
+                        droneId: selectedDroneId,
+                        targetNodeId: selectedCluster.id,
+                      });
+                    }
+                  }}
                   data-testid="button-assign-drone"
                 >
-                  <Zap className="mr-2 h-4 w-4" />
-                  Assign Mining Drone
+                  <Rocket className="mr-2 h-4 w-4" />
+                  {assignDroneMutation.isPending ? "Assigning..." : "Assign Drone"}
                 </Button>
               </CardFooter>
             </Card>

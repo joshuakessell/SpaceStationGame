@@ -7,7 +7,8 @@ import TutorialDialog from "@/components/TutorialDialog";
 import BuildMenu from "@/components/BuildMenu";
 import BuildingDetailMenu from "@/components/BuildingDetailMenu";
 import { StarMap } from "@/components/StarMap";
-import { Settings, Swords } from "lucide-react";
+import DroneHangar from "@/components/DroneHangar";
+import { Settings, Swords, Rocket } from "lucide-react";
 import type { Player, Building } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -38,6 +39,7 @@ export default function Game() {
   const [showBuildMenu, setShowBuildMenu] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null);
   const [showStarMap, setShowStarMap] = useState(false);
+  const [showDroneHangar, setShowDroneHangar] = useState(false);
 
   // Fetch player data
   const { data: player, isLoading: playerLoading } = useQuery<Player>({
@@ -356,10 +358,20 @@ export default function Game() {
         </div>
         <div className="flex items-center gap-2">
           {tutorialStep === "complete" && (
-            <Button variant="default" data-testid="button-battle">
-              <Swords className="w-5 h-5 mr-2" />
-              Battle
-            </Button>
+            <>
+              <Button 
+                variant="default" 
+                onClick={() => setShowDroneHangar(true)}
+                data-testid="button-drone-hangar"
+              >
+                <Rocket className="w-5 h-5 mr-2" />
+                Drones
+              </Button>
+              <Button variant="default" data-testid="button-battle">
+                <Swords className="w-5 h-5 mr-2" />
+                Battle
+              </Button>
+            </>
           )}
           <Button 
             variant="outline" 
@@ -433,6 +445,12 @@ export default function Game() {
         open={showStarMap}
         onOpenChange={setShowStarMap}
         scannerLevel={buildings.find(b => b.buildingType === "scanner" && b.isBuilt)?.level || 0}
+      />
+
+      {/* Drone Hangar */}
+      <DroneHangar
+        open={showDroneHangar}
+        onOpenChange={setShowDroneHangar}
       />
     </div>
   );
