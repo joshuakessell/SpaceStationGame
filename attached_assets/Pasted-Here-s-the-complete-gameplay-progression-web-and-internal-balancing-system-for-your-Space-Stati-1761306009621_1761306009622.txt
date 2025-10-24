@@ -1,0 +1,178 @@
+Here’s the complete **gameplay progression web** and internal balancing system for your *Space Station Tycoon / Battle Command* concept.
+This structure defines every major **module**, **unlock path**, **research dependency**, and **progression rule** — ensuring there are no dead ends while maintaining a natural increase in time and difficulty.
+
+---
+
+## 1. Core Progression Overview
+
+**Player Flow:**
+
+1. Begin with Central Hub (Level 1) → unlocks Command Core.
+2. Build Command Core → allows basic mining and Iron acquisition.
+3. Construct Drone Hangar → begin asteroid mining loop.
+4. Gather Iron → unlock power modules.
+5. Build first power module → unlocks Research Bay.
+6. Research Bay opens access to:
+
+   * Battle Drone Tech (offense/defense research)
+   * Energy Research (better generators)
+   * Station Defense Systems
+7. Unlock and build Drone Factory (small) → first combat units.
+8. Construct Warp Gate → access AI Battle Mode (single-player first).
+9. Build Networking Node → guild features (future multiplayer).
+10. Unlock Planetary Scanner → begin exotic material loop.
+
+---
+
+## 2. Core Modules and Dependencies
+
+| Module                      | Description                                                                       | Unlock Requirement               | Upgrade Dependency                           |
+| --------------------------- | --------------------------------------------------------------------------------- | -------------------------------- | -------------------------------------------- |
+| **Central Hub**             | The core of all station operations. Provides base power and controls build limit. | Starting structure               | Must be ≥ all other modules’ levels.         |
+| **Command Core**            | Oversees drones, mining, and fleet operations.                                    | Hub Level 1                      | Cannot exceed Hub level.                     |
+| **Power Modules**           | Provide energy required for advanced systems.                                     | Iron + Command Core              | Power capacity gates Research and Factories. |
+| **Research Bay**            | Allows development of tech trees.                                                 | Power Online                     | Level determines accessible tech tiers.      |
+| **Drone Hangar**            | Builds Mining and Planetary drones.                                               | Command Core Level 2             | Higher level = more drones.                  |
+| **Drone Factories (S/M/L)** | Constructs combat drones (tiered).                                                | Battle Tech from Research Bay    | Higher levels produce advanced unit types.   |
+| **Guild Comm Node**         | Connects station to guilds and trade networks.                                    | Hub Level 3 + Research Tech      | Enables collaboration / shared defense.      |
+| **Warp Gate**               | Enables access to Battle Arena (AI or PvP).                                       | Factory Tier 1 built + Warp Tech | Required for matchmaking integration.        |
+
+---
+
+## 3. Power Generation Module Types
+
+Power dictates build caps, research, and drone production speed.
+Each tier provides exponentially higher power yield but at growing material and time costs.
+
+| Module                      | Power Output | Resource Cost                          | Build Time | Notes                                       |
+| --------------------------- | ------------ | -------------------------------------- | ---------- | ------------------------------------------- |
+| **Solar Relay**             | Low          | Iron only                              | 1 min      | Early starter; constant low yield.          |
+| **Fusion Core**             | Medium       | Iron + Crystal                         | 5 min      | Stable output, unlocks Research Bay.        |
+| **Antimatter Reactor**      | High         | Iron + Crystal + Exotic                | 15 min     | Supports advanced research.                 |
+| **Quantum Dynamo**          | Very High    | Iron + Crystal + Exotic + Energy Cells | 30–60 min  | Needed for Warp Gate and high-tier tech.    |
+| **Dark Singularity Engine** | Extreme      | Endgame only                           | 12–24 hr   | Powers entire base during large-scale wars. |
+
+---
+
+## 4. Research Modules and Tech Trees
+
+### 4.1 Station Defense and Offense Research Module
+
+* Unlocks **turrets**, **shields**, **hull plating**, and **countermeasure drones**.
+* Each upgrade requires Iron + Crystal + Exotic.
+* Early tech: +10% station HP, small railgun.
+* Mid tech: automated laser turrets, kinetic shields.
+* Late tech: energy barrier + drone-linked defense network.
+
+### 4.2 Drone Technology Research Module
+
+* Unlocks drone chassis types and weapon tiers.
+* Tech progression:
+
+  * Level 1 → Light Scouts
+  * Level 2 → Balanced Fighters
+  * Level 3 → Heavy Bombers
+  * Level 4 → Tactical Support Units
+* Each chassis unlocks a **factory module** tier (Small, Medium, Large Drone Foundries).
+
+### 4.3 Energy Research Module
+
+* Enhances generator efficiency.
+* Unlocks new generator blueprints (Fusion → Antimatter → Quantum → Dark).
+* Later enables **energy cell** crafting for advanced drones and reactors.
+
+---
+
+## 5. Planetary Scanning and Exotic Materials
+
+### 5.1 Planet Scanner System
+
+* Unlocked after Research Bay Level 3.
+* Operates similarly to asteroid scanning, but finds **planets**.
+* Planets contain **unique exotic elements**:
+
+  * Xenon Crystals (energy research)
+  * Neutron Isotopes (weapon tech)
+  * Helion Dust (warp technology)
+  * Quantum Filaments (defensive tech)
+* Scanning takes time (3–10 min per planet).
+
+### 5.2 Planetary Drones
+
+* Faster than mining drones.
+* Have defensive turrets (can be upgraded).
+* Must survive exploration to return exotic materials.
+* Research required for:
+
+  * Warp Drives (faster travel)
+  * Cargo Expansion (more material per trip)
+  * Planetary Shield Emitters (defense vs. hazards)
+
+---
+
+## 6. Progression Web (Unlock Path)
+
+1. **Central Hub → Command Core**
+2. **Command Core → Drone Hangar**
+3. **Drone Hangar → Iron Mining**
+4. **Iron → Power Module (Solar Relay)**
+5. **Power → Research Bay**
+6. **Research Bay → Energy Research → Fusion Core**
+7. **Research Bay → Battle Tech → Drone Factory (Small)**
+8. **Drone Factory → Build Combat Drones**
+9. **Combat Drones → Warp Gate Access → AI Battles**
+10. **Winning Battles → Gain Crystal**
+11. **Crystal → Advanced Power / Research**
+12. **Advanced Research → Planet Scanner**
+13. **Planet Scanner → Exotic Material Loop**
+14. **Exotic Materials → Unlock Quantum Reactors + Large Factories**
+15. **Quantum Reactors → Warp Gate Tier 2 → Guild Node → Multiplayer Tier**
+
+---
+
+## 7. Time and Balance System
+
+| Tier                 | Average Time per Upgrade | Example Upgrades               | Notes                      |
+| -------------------- | ------------------------ | ------------------------------ | -------------------------- |
+| **T1: Starter**      | 0–5 min                  | Mining Drones, Solar Relay     | Instant engagement.        |
+| **T2: Expansion**    | 5–15 min                 | Research Bay, Fusion Core      | Introduces idle mechanics. |
+| **T3: Combat Ready** | 15–30 min                | Drone Factory, Warp Gate       | Unlocks first battles.     |
+| **T4: Advanced**     | 30 min–6 hr              | Planet Scanner, Quantum Dynamo | Mid-game depth.            |
+| **T5: Strategic**    | 6–24 hr                  | Exotic Tech, Guild Systems     | Long-term retention.       |
+
+Each module’s upgrade curve doubles in cost and time per level but stays under the 24-hour cap.
+
+---
+
+## 8. Balance and Fail-Safe Mechanics
+
+* **No Dead Ends:** At any time, players can:
+
+  * Farm Iron via asteroids.
+  * Farm Crystal via Rifts.
+  * Scan for new planets for Exotic resources.
+* **Energy Bottleneck System:** Power limits growth rate, creating a natural pacing gate.
+* **Research Tiers:** Require multiple resource types, ensuring diversity in gameplay loops.
+* **Hub Hierarchy Rule:**
+  No module can exceed the Hub’s level → ensures balanced expansion.
+* **Instant Gratification Layer:**
+  Early construction times (1–15 min) keep new players hooked.
+* **Late Game Patience Layer:**
+  High-tier modules cap at 24 hr for major upgrades (but with idle rewards).
+
+---
+
+## 9. Future-Ready Systems for AWS Integration
+
+When expanded:
+
+* **Warp Gate** will act as the matchmaking trigger.
+* **Battle Drone Factory** units will sync with GameLift session templates.
+* **Guild Node** will connect via AWS GameLift or GameSparks services for co-op PvE events.
+
+---
+
+Would you like the next step to be:
+
+1. A **visual dependency chart** (tech tree + resource flow), or
+2. A **data table** version formatted for import into Replit (JSON or CSV format for module definitions)?

@@ -1,0 +1,515 @@
+The combat system will use deterministic math, visible stats, and predictable rules so Replit can code it and players can learn it. It will run like a tactical auto-battler with initiative order and elemental matchups, similar to turn-based squad battlers where Speed and "turn meter" determine who acts first and most often, and where attack types have strengths and weaknesses against defenses. In games like RAID: Shadow Legends and Star Wars Galaxy of Heroes, combat order is controlled by Speed and a per-unit turn meter, and each turn a unit chooses an action like attack, buff, or debuff until one team is wiped. ([Raid: Shadow Legends][1]) In games like Summoners War, each unit also has an elemental identity that gives bonus damage or penalty depending on enemy element, crit chance boosts on advantage, and damage reduction on disadvantage. ([summonerswar.fandom.com][2])
+
+We will adapt those same proven systems into the space combat loop defined below.
+
+This spec covers:
+
+1. Core ship stats
+
+2. Weapon classes and damage pipeline
+
+3. Element and resistance system
+
+4. Turn order and AI action loop
+
+5. Grid rules and movement
+
+6. Research modifiers and loadout limits
+
+7. Upgrade pacing and combat balance
+
+8. Core ship stats
+
+Every combat ship on the 6x4 grid has these base stats:
+
+1.1 HP
+Total structural health. When HP reaches 0 the ship is destroyed and removed from battle. HP is protected by Shield until Shield is gone unless the attack bypasses Shield.
+
+1.2 Shield
+Temporary energy barrier. Incoming damage hits Shield first. Shield regenerates between battles but not inside a battle unless a support effect restores it. EMP and certain plasma effects can target Shield directly.
+
+1.3 Hull Strength
+Flat physical resilience of the chassis. Think of it as armor. Hull Strength reduces any damage that reaches the hull after the Shield is down. Hull Strength applies as percentage reduction to post-modified damage (example math in section 2.5).
+
+1.4 Energy
+Ability power pool used to fire special weapons or abilities. The primary weapon for each ship can either be:
+
+* Basic weapon (no Energy cost, fires every time it is that ship's turn)
+* Special weapon (costs Energy, higher impact, cooldown)
+  Energy regenerates slowly each time that ship takes a turn. You cannot fire a weapon if you do not have enough Energy for that weapon.
+
+1.5 Attack Speed
+How often this ship can fire within its turn. We will define attack cadence per turn rather than per second because this is turn-based. Attack Speed affects weapon cooldown and multi-shot behavior. A ship with high Attack Speed can output more volleys on its turn.
+
+1.6 Movement Speed
+How far the ship can reposition in one turn. Higher Movement Speed means it can close distance, get into firing arc, or retreat behind a tank ship faster. Movement matters because ships have weapon ranges and arcs.
+
+1.7 Initiative (Battle Speed)
+This is the stat that drives turn order. We separate it from Movement Speed. Initiative is the ship's effective Speed stat. Each ship fills its "turn meter" based on Initiative. The unit whose meter fills first acts next. This matches how Speed and Turn Meter work in other turn-based auto-battlers, where a faster unit's bar fills more quickly and that unit takes turns more often. ([Raid: Shadow Legends][1])
+
+1.8 Accuracy / Disruption / Resist (later tier)
+To future-proof status effects like disable engines or shut down shields, we add:
+
+* Disruption (Potency analog): how likely this ship's debuffs stick
+* Resistance (Tenacity analog): how likely this ship shrugs off debuffs
+  This mirrors how debuff accuracy vs resistance is handled in other turn-based battlers. ([SWGoH Wiki][3])
+
+These can start hidden in early game and unlock in Research.
+
+Summary:
+
+* HP and Shield define survivability.
+* Hull Strength defines post-shield toughness.
+* Initiative defines turn frequency.
+* Attack Speed defines per-turn fire volume.
+* Movement Speed defines board control.
+* Energy defines ability usage.
+* Disruption/Resistance defines control play later.
+
+2. Weapon classes and damage pipeline
+
+Weapons define how damage is applied. Each ship carries one Primary Weapon plus one Optional Secondary (unlocked later). Each weapon has:
+
+* Base Damage
+* Range
+* Energy Cost
+* Weapon Type
+* Element Tag (damage flavor)
+* Cooldown (number of turns before it can fire again)
+
+We will define weapon types and map them to sci-fi fantasy expectations.
+
+2.1 Ballistic / Kinetic (Bullets)
+
+* Flavor: autocannons, railguns, coilguns
+* Application: Direct hull penetration
+* Default behavior:
+
+  * High Base Damage per hit
+  * Good vs Hull
+  * Mediocre vs Shield (Shield absorbs raw kinetic impact efficiently)
+  * Medium range
+  * Low to zero Energy cost
+  * Fast cooldown
+* Counters: Heavy Hull Strength reduces ballistic well.
+
+2.2 Phaser / Laser
+
+* Flavor: focused energy beams
+* Application: Burns Shield quickly
+* Default behavior:
+
+  * High Shield damage multiplier
+  * Lower effectiveness vs thick physical hull
+  * High accuracy (reduced miss chance)
+  * Medium-high Energy cost
+  * Medium range
+  * Moderate cooldown
+* Counters: Thermal-resistant Shield tech can reduce phaser burn.
+
+2.3 Plasma
+
+* Flavor: superheated plasma bolts
+* Application: Splash / area burn
+* Default behavior:
+
+  * Deals damage to Shield and Hull both, partially ignoring Hull Strength
+  * Can apply Damage Over Time burn on the target for several future turns
+  * Costs Energy
+  * Slower cooldown
+  * Shorter range
+* Plasma is volatile. Plasma is strong but unreliable if you cannot close distance.
+
+2.4 Torpedoes / Rockets
+
+* Flavor: physical warheads
+* Application: Burst strike
+* Default behavior:
+
+  * High single-hit burst
+  * Long cooldown
+  * Consumes Energy and maybe ammunition charges
+  * Can target backline (ignores front blockers if line-of-sight is open vertically on the grid)
+* Secondary effect: may apply "Hull Breach" debuff, making the target take bonus damage from all sources for X turns.
+
+2.5 EMP
+
+* Flavor: electromagnetic pulse
+* Application: Disable defenses
+* Default behavior:
+
+  * Very high damage to Shield only
+  * Bypasses Hull until Shield is gone
+  * Also applies "Systems Disrupt" debuff: slows Initiative and Movement Speed for N turns
+* EMP is how you crack tanks with huge Shield values.
+* EMP does almost nothing to bare hull once Shield is already down.
+
+2.6 Missile Swarm (late tier upgrade of Rockets)
+
+* Flavor: multi-seeking micro rockets
+* Application: Multi-target chip
+
+  * Medium damage to several targets in a cone
+  * Long cooldown
+  * High Energy cost
+
+Each weapon type has a range class:
+
+* Short (must be in same or adjacent tile row and ≤2 tiles away forward)
+* Medium (≤4 tiles away forward)
+* Long (full column reach)
+
+Weapon range matters for movement logic.
+
+2.7 Damage pipeline (per shot)
+
+When Ship A attacks Ship B, damage is resolved in this order:
+
+Step 1. Base Weapon Damage
+Start with weapon Base Damage.
+
+Step 2. Element Modifier
+Multiply by Element Advantage / Disadvantage (see section 3).
+Example: +20 percent vs a weak element, -30 percent vs a strong resistance, similar to elemental advantage systems where certain attributes gain bonus damage and crit chance against their favorable matchups and are penalized against the counter. ([summonerswar.fandom.com][2])
+
+Step 3. Shield Interaction
+If Ship B still has Shield:
+
+* Apply Shield interaction rule for that weapon:
+
+  * Bullets: Shield takes full value, no bypass
+  * Phaser: Shield takes 125 percent damage
+  * Plasma: Shield takes 100 percent damage
+  * Torpedo/Rocket: Shield takes 75 percent (explosives partially bypass Shield)
+  * EMP: Shield takes 200 percent damage
+    Subtract damage from Shield.
+    If Shield is reduced below 0, overflow becomes Hull damage (continue to Step 4 with overflow only).
+
+If Ship B has no Shield:
+Skip straight to Step 4.
+
+Step 4. Hull Interaction
+Take remaining damage after Shield and apply Hull interaction:
+
+* Bullets: 100 percent to hull
+* Phaser: 75 percent to hull
+* Plasma: 100 percent to hull and ignore 50 percent of Hull Strength reduction
+* Torpedo/Rocket: 150 percent to hull
+* EMP: 25 percent to hull (EMP is bad vs naked hull)
+
+Now apply Hull Strength.
+Hull Strength is a % reduction. Example: Hull Strength 20 means 20 percent reduction to incoming hull damage unless the weapon partially ignores it (Plasma, Torpedoes may partially ignore).
+
+HP goes down by the final value. If HP ≤ 0, ship is destroyed and removed from grid.
+
+Step 5. Status Effects
+If the weapon applies a status (Hull Breach, Systems Disrupt, Burning Plasma, etc.), roll Disruption vs target Resistance to see if the effect lands. This mirrors Potency vs Tenacity systems in other turn-based battlers, where a unit with higher effectiveness can land debuffs unless resisted by the target, and there is always a base resist floor. ([SWGoH Wiki][3])
+
+Status effects then alter future turns, not the current hit.
+
+This pipeline is deterministic. Replit can code it as a function that takes attacker stats, defender stats, weapon profile, and returns new Shield, Hull, HP, and any debuffs applied.
+
+3. Element / resistance system
+
+We need an "element" triangle (or square) that governs advantage and resistance. Other games use a 3-element rock-paper-scissors loop (fire > wind > water > fire) plus special elements like light and dark that counter each other. This gives predictable matchups and meaningful roster building. ([summonerswar.fandom.com][2])
+
+We adapt this to sci-fi ship combat using Tech Signatures instead of fantasy elements:
+
+Define 4 Tech Signatures:
+
+* Kinetic
+* Thermal
+* Plasma
+* EMP
+
+We will use a loop of advantages:
+
+* Kinetic beats Plasma (solid slugs punch through overheated unstable armor)
+* Plasma beats Thermal (plasma overwhelms heat shielding and bleeds into hull)
+* Thermal beats Kinetic (thermal weapons overheat and jam ballistic mechanisms and ammo feeds)
+* EMP is special. EMP does bonus vs Shielded targets of any type but weak vs bare hull. It is not part of the standard triangle. EMP interacts with Initiative and Movement (slow, stun-like debuff).
+
+Rules:
+
+* Attacker with advantage gets:
+
+  * +20 percent final damage after base but before Shield/Hull splitting
+  * +10 percent higher crit chance if we later add crits
+* Attacker with disadvantage suffers:
+
+  * -30 percent final damage
+  * Debuff chances reduced
+  * Reduced ability to apply system effects
+    This mirrors common mobile/TB battlers where advantage grants a damage/crit bonus and disadvantage penalizes output and debuff landing rate. ([summonerswar.fandom.com][2])
+
+We also tag each ship's defensive profile:
+
+* Light Frame: fast, low Hull Strength, weak to Kinetic
+* Heavy Frame: slow, high Hull Strength, weak to Plasma
+* Shielded Frame: big Shield pool, weak to EMP
+* Stealth Frame (later): hard to target at long range, weak to Thermal (infrared lock)
+
+This creates counterplay:
+
+* Bring EMP vs Shielded Frames
+* Bring Plasma vs Heavy Frames
+* Bring Thermal vs Stealth Frames
+* Bring Kinetic vs fragile Plasma-based Frames
+
+Players can see enemy lineup before battle and choose ships accordingly, similar to how players in team battlers choose counters based on enemy composition. ([Bluestacks][4])
+
+4. Turn order and AI action loop
+
+4.1 Grid and team size
+Battlefield is a 6x4 grid for the player. Player ships face upward. Enemy ships are mirrored, facing downward. You place up to 6 ships in the bottom rows (your half). Enemy does the same on the top side. You see your team at the bottom by default. This is similar to games where two squads line up on opposite sides and fight until one squad is wiped. ([Bluestacks][4])
+
+4.2 Initiative and turn meter
+We adopt a turn meter system rather than strict round-robin.
+
+Each ship has:
+
+* Initiative stat (Battle Speed)
+* Turn Meter (0 to 1000)
+
+Each tick, every surviving ship gains Turn Meter = Initiative.
+When a ship's Turn Meter ≥ 1000, that ship takes its turn. Then its Turn Meter is reduced by 1000 (overflow stays so very fast ships can lap slower ones). This matches how other turn-based auto systems resolve speed, where faster units act more often and can take multiple turns before a slow unit moves. ([Raid: Shadow Legends][1])
+
+We do not need a global "round." The battle is continuous until one team is dead.
+
+4.3 Turn sequence for a ship
+
+When a ship gets its turn:
+Step A. Regenerate Energy
+
+* Add fixed Energy Regen per turn, capped at ship's max Energy.
+
+Step B. Check AI strategy profile
+Each ship has a chosen strategy set before battle. For first build we define:
+
+* Aggressive: target nearest enemy in range with highest raw damage weapon
+* Protector: stay near allied high-value unit and intercept threats
+* Harasser: target weakest HP enemy even if farther away; prefers long range fire
+* Disruptor: prefers EMP / debuff to slow enemy Initiative
+
+Player assigns one strategy per ship before battle. Later we can unlock more strategies in Research.
+
+Step C. Movement
+Ship moves up to Movement Speed tiles (forward, diagonally, or sideways within allowed grid) to get into optimal range and arc for its preferred target. Movement stops early if already in range.
+
+Collision rule:
+
+* Multiple ships can occupy the same column and row visually offset, but engagement logic treats them as discrete cells for targeting. We keep this simple for implementation: 1 ship per tile at placement, and ships cannot pass through allies. So movement is pathfinding within the 6x4 footprint, constrained by allies.
+
+Step D. Fire
+Ship chooses weapon to fire this turn:
+
+* If Special Weapon is off cooldown and enough Energy is available and target in range → fire Special.
+* Else fire Basic Weapon.
+
+Then we run the damage pipeline from section 2.7.
+
+Step E. Apply on-hit effects
+Possible debuffs from weapons:
+
+* Hull Breach (take +X percent hull damage for Y turns)
+* Systems Disrupt (reduce Initiative and Movement Speed for Y turns; EMP-like)
+* Plasma Burn (take damage over time for Y turns)
+* Shield Leak (Shield regen disabled for Y turns)
+  Debuff success chance = Attacker Disruption vs Defender Resistance as described earlier. ([SWGoH Wiki][3])
+
+Step F. Cooldowns update
+Reduce cooldown timers on Special Weapon or abilities.
+
+Step G. End of turn
+Ship's Turn Meter is reduced by 1000 and any overflow remains.
+
+4.4 Win condition
+Battle ends when all ships on one side are destroyed. That player loses. The surviving player wins and gets rewards (credits, resources, rank score).
+
+4.5 Tie breakers
+If both final ships destroy each other on the same action, call it a draw:
+
+* Draw can award both sides a minimal payout, no rank change.
+
+5. Grid rules and range
+
+5.1 Placement
+Player can place up to 6 ships anywhere on their half of the 6x4 grid before battle. The top half is reserved for the opponent. The front-most row is closest to enemy and will engage first. Placing tanky ships in the front and fragile ships in the back matters.
+
+5.2 Blockers and line-of-sight
+Default targeting is closest threat in your column. Torpedoes and certain long-range weapons can target a backline tile if unobstructed. This lets snipers and artillery matter.
+
+5.3 Movement
+On its turn a ship can move up to Movement Speed tiles toward its chosen target. Fast interceptors can jump forward quickly in early turns and threaten backline. Slow heavy ships take longer to reach firing range, but if they survive they hit hard.
+
+This produces positional play:
+
+* Slow heavy hull ships act like anchors.
+* Fast assault ships dive.
+* Support ships sit behind tanks and heal/EMP/debuff or amplify allies.
+
+This maps to known squad battlers where tanks front-line and supports hide, and where turn order manipulation is often decisive. ([Bluestacks][4])
+
+6. Research modifiers and loadout limits
+
+6.1 Passive research modifiers
+Research unlocks passive modifiers that can be slotted onto ships. Each ship can equip at most two modifiers.
+
+Modifier categories:
+
+* Resistance Mods
+
+  * Reduce incoming damage from a given Tech Signature (e.g. "EMP Hardening" = -40 percent EMP damage taken and -40 percent Initiative slow duration)
+  * Reduce chance to be debuffed by that signature
+* Amplifier Mods
+
+  * Increase outgoing damage of a given weapon class or signature (e.g. "+20 percent Plasma burn damage")
+* Utility Mods
+
+  * Increase Initiative (acts more often)
+  * Increase Movement Speed (reposition faster)
+  * Increase Hull Strength or Shield capacity
+  * Increase Energy regen
+
+6.2 Loadout rules
+
+* A ship can equip up to two mods total.
+* Stacking two of the same exact mod is not allowed.
+* You can equip one offensive mod and one defensive mod, or two defensive mods, or two offensive mods as long as they are different.
+
+This forces tradeoffs and prevents invincible ships.
+
+6.3 Tech tree gating
+Some mods require certain station modules and research levels:
+
+* EMP Hardening mod requires Offense/Defense Research Module Level 3 and Crystal + Exotic materials.
+* Plasma Overcharge mod requires Drone Weapons Research Level 2 and advanced energy generation.
+* Initiative Booster mod requires mid-tier Power Module research (Fusion Core or better) since faster power cycling = faster fire rate.
+
+6.4 Ship chassis scaling
+Base ships (starter fighters) will have low HP, low Shield, mid Initiative. They can still equip mods, but their base power is limited.
+Advanced ships (built in Medium Drone Foundry and Large Drone Foundry) scale all core stats up and unlock higher weapon classes (torpedo, EMP, plasma AoE).
+
+7. Upgrade pacing and combat balance
+
+7.1 Early game (first 30 minutes of play)
+Goal: reach first battle-ready squad and unlock Warp Gate access to AI battles.
+
+Steps:
+
+1. Build Command Core and Drone Hangar.
+2. Mine Iron and Crystal via asteroid clusters and first Rift.
+3. Build Solar Relay (cheap power).
+4. Build Research Bay Level 1.
+5. Unlock Light Combat Drone blueprint.
+6. Build Small Drone Foundry.
+7. Produce up to 6 Light Combat Drones.
+8. Unlock Warp Gate Tier 1.
+9. Fight AI enemy squad.
+
+All build timers here are 0 to 15 minutes per upgrade, in line with your rule for fast onboarding into combat.
+
+Combat at this tier:
+
+* Fights use basic Ballistic and Phaser weapons.
+* No elemental modifiers yet except a simple "EMP weakens Shield" rule.
+* No debuff/Disruption math exposed yet.
+* Hull Strength is low so ships die fast.
+* Turn order is mostly Initiative race: fast ships go first and often decide the fight, similar to how early arena metas in speed-focused turn-based games revolve around acting first. ([Raid: Shadow Legends][1])
+
+7.2 Mid game (1 hour to several hours)
+Goal: deepen team-building and introduce counterplay.
+
+Unlocks:
+
+* Fusion Core (stronger power)
+* Research Bay Level 2-3
+* Drone Tech Research Module
+* Medium Drone Foundry
+* Planet Scanner (start Exotic material loop)
+* First Resistance and Amplifier Mods
+* EMP weapon class
+* Plasma weapon class
+* Torpedo burst class
+
+Now combat complexity increases:
+
+* Heavy Frames with big Hull Strength enter play.
+* EMP ships exist to delete Shield tanks.
+* Plasma ships exist to melt Heavy Frames.
+* Movement Speed and Initiative become build levers.
+* Mods start shaping identity.
+* Status effects (Systems Disrupt, Hull Breach, Plasma Burn) start to matter.
+* Timers for these upgrades move into 15–30 minute range for core buildings and 30–60 minute range for high-tier power or scanner unlocks.
+
+7.3 Late game (end of day one and beyond)
+Goal: long-term retention and PvP depth.
+
+Unlocks:
+
+* Antimatter Reactor / Quantum Dynamo power
+* Large Drone Foundry
+* High-tier chassis like Bombers, Support Drones, Shield Generators
+* Guild Comm Node
+* Warp Gate Tier 2 (matchmaking-ready)
+* High-tier mods including Initiative Booster, EMP Hardening, Plasma Overcharge
+* Exotic materials from planetary scanning and planetary drones
+
+Timers:
+
+* 1–6 hours for major research milestones
+* 6–24 hours for top-tier infrastructure like Quantum Dynamo, Guild Node, Warp Gate Tier 2
+
+Combat at this tier:
+
+* Players field specialized squads:
+
+  * Shield tank + EMP disruptor + plasma bruiser + torpedo finisher + support drone + initiative booster
+* Element/Signature counter matchups matter now:
+
+  * Bring EMP vs Shield-heavy comps
+  * Bring Plasma vs Heavy hull comps
+  * Bring Thermal vs Stealth frames
+* Turn order manipulation becomes a meta layer similar to advanced turn meter control in other games, where slowing enemy turn meter or boosting your own speed can decide entire matches. ([SWGoH Wiki][3])
+* Players invest Exotic materials from planet scanning to unlock new mods and chassis, tying battle performance back into station growth.
+
+At no point is the player stuck with no viable path forward.
+If Iron is low: scan more asteroid clusters and build more Mining Drones.
+If Crystal is low: deploy more Extraction Arrays to Rifts.
+If Exotic is low: send planetary drones with upgraded warp drives to new planets.
+If power is low: build or upgrade next-tier generator.
+If combat strength is low: upgrade Foundries to unlock new chassis or equip better mods.
+
+The player always has at least one actionable lever to pull:
+
+* harvest more,
+* research more,
+* build more,
+* refit ships.
+
+That closes the loop between economic growth, research unlocks, ship manufacturing, and tactical auto-combat.
+
+This spec defines:
+
+* mandatory per-ship stats,
+* weapon classes and math,
+* turn order and initiative loop,
+* grid interaction,
+* element/resistance mapping inspired by attribute advantage systems,
+* research-driven modifiers with slot limits,
+* pacing that ramps from instant to 24h upgrades,
+* and hooks for matchmaking once multiplayer is enabled.
+
+Replit can now implement:
+
+1. Ship class data model
+2. Weapon model and damage pipeline function
+3. Initiative / turn meter manager
+4. AI routine (target select, move, fire)
+5. Combat resolver loop that ends on wipe
+6. Research unlock tables for mods, weapons, and chassis tied to station modules and resource tiers
+
+[1]: https://raidshadowlegends.com/game-overview/?utm_source=chatgpt.com "Basic Gameplay, Battles Basics and Turn Meter"
+[2]: https://summonerswar.fandom.com/wiki/Attribute_Advantage?utm_source=chatgpt.com "Attribute Advantage | Summoners War Sky Arena Wiki | Fandom"
+[3]: https://swgoh.wiki/wiki/Mechanics?utm_source=chatgpt.com "Mechanics"
+[4]: https://www.bluestacks.com/blog/game-guides/raid-shadow-legends/raid-shadow-legends-combat-mechanics-win-battles-en.html?utm_source=chatgpt.com "RAID: Shadow Legends Combat Guide - Introduction to the ..."
