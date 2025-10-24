@@ -9,12 +9,16 @@ import {
   drones,
   missions,
   extractionArrays,
+  researchProjects,
+  playerTechUnlocks,
   DRONE_UPGRADE_CONFIG,
   ARRAY_UPGRADE_CONFIG,
   ARRAY_TIERS,
   POWER_MODULE_TIERS,
   CENTRAL_HUB_CONFIG,
   BUILDING_POWER_COSTS,
+  MODULE_UNLOCK_REQUIREMENTS,
+  RESEARCH_TREE,
   type User, 
   type UpsertUser,
   type Player,
@@ -30,8 +34,12 @@ import {
   type Mission,
   type InsertMission,
   type ExtractionArray,
-  type InsertExtractionArray
+  type InsertExtractionArray,
+  type ResearchProject,
+  type InsertResearchProject,
+  type PlayerTechUnlock
 } from "@shared/schema";
+import { calculateResearchBonuses, type ResearchBonuses } from "./bonus-system";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -99,6 +107,21 @@ export interface IStorage {
   upgradeCentralHub(playerId: string, targetLevel: number): Promise<void>;
   calculatePowerBudget(playerId: string): Promise<{ generation: number; consumption: number; available: number }>;
   enforcePowerLimits(playerId: string): Promise<void>;
+
+  // Station module operations (Phase 6)
+  getPlayerStationModules(playerId: string): Promise<StationModule[]>;
+  buildStationModule(playerId: string, moduleData: Partial<InsertStationModule>): Promise<StationModule>;
+
+  // Research operations (Phase 6.3)
+  startResearch(playerId: string, researchId: string): Promise<ResearchProject>;
+  cancelResearch(playerId: string, projectId: string): Promise<void>;
+  getActiveResearch(playerId: string): Promise<ResearchProject | null>;
+  getResearchHistory(playerId: string): Promise<ResearchProject[]>;
+  getPlayerTechUnlocks(playerId: string): Promise<PlayerTechUnlock[]>;
+  checkResearchPrerequisites(playerId: string, researchId: string): Promise<boolean>;
+  
+  // Bonus system (Phase 6.5)
+  getPlayerResearchBonuses(playerId: string): Promise<ResearchBonuses>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -794,6 +817,226 @@ export class DatabaseStorage implements IStorage {
           )
         );
     }
+  }
+
+  async getPlayerStationModules(playerId: string): Promise<StationModule[]> {
+    return await db
+      .select()
+      .from(stationModules)
+      .where(eq(stationModules.playerId, playerId));
+  }
+
+  async buildStationModule(playerId: string, moduleData: Partial<InsertStationModule>): Promise<StationModule> {
+    return await db.transaction(async (tx) => {
+      const player = await this.getPlayer(playerId);
+      if (!player) {
+        throw new Error('Player not found');
+      }
+
+      const moduleType = moduleData.moduleType;
+      if (!moduleType) {
+        throw new Error('Module type is required');
+      }
+
+      // Check hub level requirements for module type
+      if (MODULE_UNLOCK_REQUIREMENTS[moduleType]) {
+        const required = MODULE_UNLOCK_REQUIREMENTS[moduleType].hubLevel;
+        if (player.hubLevel < required) {
+          throw new Error(`Central Hub level ${required} required to build ${moduleType}`);
+        }
+      }
+
+      // Calculate power cost
+      const powerCost = BUILDING_POWER_COSTS[moduleType as keyof typeof BUILDING_POWER_COSTS] || 0;
+
+      // Create the module
+      const [module] = await tx
+        .insert(stationModules)
+        .values({
+          playerId,
+          ...moduleData,
+          powerCost,
+        })
+        .returning();
+
+      return module;
+    });
+  }
+
+  // Research operations (Phase 6.3)
+  async startResearch(playerId: string, researchId: string): Promise<ResearchProject> {
+    return await db.transaction(async (tx) => {
+      // 1. Validate research tech exists in RESEARCH_TREE
+      const tech = RESEARCH_TREE.find(t => t.id === researchId);
+      if (!tech) {
+        throw new Error("Invalid research ID");
+      }
+      
+      // 2. Check if research already unlocked
+      const existingUnlocks = await tx
+        .select()
+        .from(playerTechUnlocks)
+        .where(
+          and(
+            eq(playerTechUnlocks.playerId, playerId),
+            eq(playerTechUnlocks.researchId, researchId)
+          )
+        );
+      
+      if (existingUnlocks.length > 0) {
+        throw new Error("Research already unlocked");
+      }
+      
+      // 3. Check prerequisites
+      const hasPrereqs = await this.checkResearchPrerequisites(playerId, researchId);
+      if (!hasPrereqs) {
+        throw new Error("Prerequisites not met");
+      }
+      
+      // 4. Check if player has active research
+      const activeResearch = await this.getActiveResearch(playerId);
+      if (activeResearch) {
+        throw new Error("Already have active research");
+      }
+      
+      // 5. Get player bonuses and calculate effective costs/duration
+      const bonuses = await this.getPlayerResearchBonuses(playerId);
+      
+      const baseCost = tech.cost;
+      const effectiveCost = {
+        metal: Math.ceil((baseCost.metal || 0) * bonuses.researchCost),
+        crystals: Math.ceil((baseCost.crystals || 0) * bonuses.researchCost),
+        credits: Math.ceil((baseCost.credits || 0) * bonuses.researchCost),
+      };
+      
+      const effectiveDuration = Math.ceil(tech.duration * bonuses.researchSpeed);
+      
+      // 6. Get player and validate resources
+      const player = await this.getPlayer(playerId);
+      if (!player) {
+        throw new Error("Player not found");
+      }
+      
+      if (effectiveCost.metal && player.metal < effectiveCost.metal) {
+        throw new Error("Insufficient metal");
+      }
+      if (effectiveCost.crystals && player.crystals < effectiveCost.crystals) {
+        throw new Error("Insufficient crystals");
+      }
+      if (effectiveCost.credits && player.credits < effectiveCost.credits) {
+        throw new Error("Insufficient credits");
+      }
+      
+      // 7. Deduct resources
+      await tx
+        .update(players)
+        .set({
+          metal: player.metal - (effectiveCost.metal || 0),
+          crystals: player.crystals - (effectiveCost.crystals || 0),
+          credits: player.credits - (effectiveCost.credits || 0),
+        })
+        .where(eq(players.id, playerId));
+      
+      // 8. Create research project
+      const now = new Date();
+      const completesAt = new Date(now.getTime() + effectiveDuration * 1000);
+      
+      const [project] = await tx
+        .insert(researchProjects)
+        .values({
+          playerId,
+          researchId,
+          researchName: tech.name,
+          category: tech.category,
+          status: "in_progress",
+          startedAt: now,
+          completesAt,
+        })
+        .returning();
+      
+      return project;
+    });
+  }
+
+  async cancelResearch(playerId: string, projectId: string): Promise<void> {
+    const project = await db
+      .select()
+      .from(researchProjects)
+      .where(
+        and(
+          eq(researchProjects.id, projectId),
+          eq(researchProjects.playerId, playerId)
+        )
+      )
+      .limit(1);
+    
+    if (project.length === 0) {
+      throw new Error("Research project not found");
+    }
+    
+    if (project[0].status !== "in_progress") {
+      throw new Error("Cannot cancel completed research");
+    }
+    
+    await db
+      .update(researchProjects)
+      .set({
+        status: "cancelled",
+        completedAt: new Date(),
+      })
+      .where(eq(researchProjects.id, projectId));
+  }
+
+  async getActiveResearch(playerId: string): Promise<ResearchProject | null> {
+    const [project] = await db
+      .select()
+      .from(researchProjects)
+      .where(
+        and(
+          eq(researchProjects.playerId, playerId),
+          eq(researchProjects.status, "in_progress")
+        )
+      )
+      .limit(1);
+    
+    return project || null;
+  }
+
+  async getResearchHistory(playerId: string): Promise<ResearchProject[]> {
+    return await db
+      .select()
+      .from(researchProjects)
+      .where(eq(researchProjects.playerId, playerId));
+  }
+
+  async getPlayerTechUnlocks(playerId: string): Promise<PlayerTechUnlock[]> {
+    return await db
+      .select()
+      .from(playerTechUnlocks)
+      .where(eq(playerTechUnlocks.playerId, playerId));
+  }
+
+  async checkResearchPrerequisites(playerId: string, researchId: string): Promise<boolean> {
+    const tech = RESEARCH_TREE.find(t => t.id === researchId);
+    if (!tech) {
+      return false;
+    }
+    
+    // If no prerequisites, return true
+    if (tech.prerequisites.length === 0) {
+      return true;
+    }
+    
+    const unlocks = await this.getPlayerTechUnlocks(playerId);
+    const unlockedIds = new Set(unlocks.map(u => u.researchId));
+    
+    // Check if all prerequisites are unlocked
+    return tech.prerequisites.every(prereqId => unlockedIds.has(prereqId));
+  }
+
+  async getPlayerResearchBonuses(playerId: string): Promise<ResearchBonuses> {
+    const unlocks = await this.getPlayerTechUnlocks(playerId);
+    return calculateResearchBonuses(unlocks);
   }
 }
 

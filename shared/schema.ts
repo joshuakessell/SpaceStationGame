@@ -267,10 +267,18 @@ export const BUILDING_POWER_COSTS = {
   drone_hangar: 3,
   rift_scanner: 5,
   array_bay: 4,
-  research_bay: 10, // Phase 6
+  research_bay: 15, // Phase 6: Moderate power consumption for research facility
   shipyard: 15, // Phase 7
   power_module: 0, // Power modules don't consume power
 } as const;
+
+// Module unlock requirements by hub level
+export const MODULE_UNLOCK_REQUIREMENTS: Record<string, { hubLevel: number; description: string }> = {
+  "drone_hangar": { hubLevel: 1, description: "Available from start" },
+  "array_bay": { hubLevel: 1, description: "Available from start" },
+  "research_bay": { hubLevel: 3, description: "Unlocked at Central Hub Level 3" },
+  // Power modules have tier gating via POWER_MODULE_TIERS
+};
 
 // ============================================================================
 // RESEARCH TECH TREE (Phase 6.1)

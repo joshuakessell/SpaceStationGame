@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertPlayerSchema, insertBuildingSchema, updatePlayerSchema, updateBuildingSchema, getEffectiveDroneStats, POWER_MODULE_TIERS, CENTRAL_HUB_CONFIG, BUILDING_POWER_COSTS, stationModules } from "@shared/schema";
+import { insertPlayerSchema, insertBuildingSchema, updatePlayerSchema, updateBuildingSchema, getEffectiveDroneStats, POWER_MODULE_TIERS, CENTRAL_HUB_CONFIG, BUILDING_POWER_COSTS, MODULE_UNLOCK_REQUIREMENTS, stationModules } from "@shared/schema";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, and } from "drizzle-orm";
@@ -990,6 +990,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching central hub unlock info:", error);
       res.status(500).json({ message: "Failed to fetch central hub unlock info" });
+    }
+  });
+
+  // ============================================================================
+  // STATION MODULES (Phase 6)
+  // ============================================================================
+
+  // Get all station modules for authenticated player
+  app.get('/api/station-modules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const modules = await storage.getPlayerStationModules(userId);
+      res.json(modules);
+    } catch (error) {
+      console.error("Error fetching station modules:", error);
+      res.status(500).json({ message: "Failed to fetch station modules" });
+    }
+  });
+
+  // Build a station module
+  app.post('/api/station-modules/build', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { moduleType, moduleName, positionX, positionY, level } = req.body;
+
+      // Validate inputs
+      if (!moduleType || typeof moduleType !== 'string') {
+        return res.status(400).json({ message: "Module type is required" });
+      }
+      if (!moduleName || typeof moduleName !== 'string' || moduleName.trim().length === 0) {
+        return res.status(400).json({ message: "Module name is required" });
+      }
+      if (typeof positionX !== 'number' || typeof positionY !== 'number') {
+        return res.status(400).json({ message: "Position coordinates are required" });
+      }
+
+      // Build module using storage method (includes hub level validation)
+      const module = await storage.buildStationModule(userId, {
+        moduleType,
+        moduleName: moduleName.trim(),
+        level: level || 1,
+        positionX,
+        positionY,
+        isBuilt: true,
+        isUpgrading: false,
+      });
+
+      // Enforce power limits after building
+      await storage.enforcePowerLimits(userId);
+
+      res.json(module);
+    } catch (error: any) {
+      console.error("Error building station module:", error);
+      res.status(400).json({ message: error.message || "Failed to build station module" });
+    }
+  });
+
+  // Get module unlock info
+  app.get('/api/station-modules/unlock-info', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get player
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      const currentLevel = player.hubLevel;
+
+      // Calculate which modules are unlocked
+      const unlockedModules: Record<string, boolean> = {};
+      for (const [moduleType, requirement] of Object.entries(MODULE_UNLOCK_REQUIREMENTS)) {
+        unlockedModules[moduleType] = currentLevel >= requirement.hubLevel;
+      }
+
+      res.json({
+        currentLevel,
+        unlockedModules,
+        requirements: MODULE_UNLOCK_REQUIREMENTS,
+      });
+    } catch (error) {
+      console.error("Error fetching module unlock info:", error);
+      res.status(500).json({ message: "Failed to fetch module unlock info" });
+    }
+  });
+
+  // ============================================================================
+  // RESEARCH SYSTEM (Phase 6.3)
+  // ============================================================================
+
+  // Start research
+  app.post('/api/research/start', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { researchId } = req.body;
+      
+      if (!researchId) {
+        return res.status(400).json({ message: "Missing researchId" });
+      }
+      
+      const project = await storage.startResearch(userId, researchId);
+      res.json(project);
+    } catch (error: any) {
+      console.error("Error starting research:", error);
+      res.status(400).json({ message: error.message || "Failed to start research" });
+    }
+  });
+
+  // Cancel research
+  app.post('/api/research/cancel/:projectId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { projectId } = req.params;
+      
+      await storage.cancelResearch(userId, projectId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error cancelling research:", error);
+      res.status(400).json({ message: error.message || "Failed to cancel research" });
+    }
+  });
+
+  // Get active research
+  app.get('/api/research/active', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const project = await storage.getActiveResearch(userId);
+      res.json(project);
+    } catch (error) {
+      console.error("Error fetching active research:", error);
+      res.status(500).json({ message: "Failed to fetch active research" });
+    }
+  });
+
+  // Get research history
+  app.get('/api/research/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const projects = await storage.getResearchHistory(userId);
+      res.json(projects);
+    } catch (error) {
+      console.error("Error fetching research history:", error);
+      res.status(500).json({ message: "Failed to fetch research history" });
+    }
+  });
+
+  // Get player tech unlocks
+  app.get('/api/research/unlocks', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const unlocks = await storage.getPlayerTechUnlocks(userId);
+      res.json(unlocks);
+    } catch (error) {
+      console.error("Error fetching tech unlocks:", error);
+      res.status(500).json({ message: "Failed to fetch tech unlocks" });
+    }
+  });
+
+  // Get player research bonuses
+  app.get('/api/research/bonuses', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const bonuses = await storage.getPlayerResearchBonuses(userId);
+      res.json(bonuses);
+    } catch (error) {
+      console.error("Error fetching research bonuses:", error);
+      res.status(500).json({ message: "Failed to fetch research bonuses" });
     }
   });
 

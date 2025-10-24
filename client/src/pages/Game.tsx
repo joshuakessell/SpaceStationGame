@@ -12,7 +12,8 @@ import ResourceConsole from "@/components/ResourceConsole";
 import { RiftScanner } from "@/components/RiftScanner";
 import { ArrayBay } from "@/components/ArrayBay";
 import PowerManagement from "@/components/PowerManagement";
-import { Settings, Swords, Rocket, Activity, Zap } from "lucide-react";
+import { ResearchBay } from "@/components/ResearchBay";
+import { Settings, Swords, Rocket, Activity, Zap, Flask } from "lucide-react";
 import type { Player, Building } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useToast } from "@/hooks/use-toast";
@@ -48,6 +49,7 @@ export default function Game() {
   const [showRiftScanner, setShowRiftScanner] = useState(false);
   const [showArrayBay, setShowArrayBay] = useState(false);
   const [showPowerManagement, setShowPowerManagement] = useState(false);
+  const [showResearchBay, setShowResearchBay] = useState(false);
 
   // Fetch player data
   const { data: player, isLoading: playerLoading } = useQuery<Player>({
@@ -413,6 +415,14 @@ export default function Game() {
                 <Zap className="w-5 h-5 mr-2" />
                 Power
               </Button>
+              <Button 
+                variant="default" 
+                onClick={() => setShowResearchBay(true)}
+                data-testid="button-research-bay"
+              >
+                <Flask className="w-5 h-5 mr-2" />
+                Research
+              </Button>
               <Button variant="default" data-testid="button-battle">
                 <Swords className="w-5 h-5 mr-2" />
                 Battle
@@ -540,6 +550,20 @@ export default function Game() {
         open={showPowerManagement}
         onOpenChange={setShowPowerManagement}
       />
+
+      {/* Research Bay Dialog */}
+      {showResearchBay && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <div className="flex justify-end mb-2">
+              <Button variant="ghost" size="icon" onClick={() => setShowResearchBay(false)} data-testid="button-close-research-bay">
+                ✕
+              </Button>
+            </div>
+            <ResearchBay />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

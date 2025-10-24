@@ -124,8 +124,12 @@ async function completeMission(missionId: string, playerId: string) {
   const drone = await storage.getDrone(mission.droneId);
   if (!drone) return;
   
-  // Use effective stats (with upgrades applied)
+  // Get base stats with upgrades applied
   const effectiveStats = getEffectiveDroneStats(drone);
+  
+  // Apply research bonuses on top of upgrade bonuses
+  const bonuses = await storage.getPlayerResearchBonuses(playerId);
+  const finalCargoCapacity = Math.floor(effectiveStats.cargoCapacity * bonuses.cargoCapacity);
   
   const result = await storage.atomicCompleteMission(
     missionId,
@@ -133,7 +137,7 @@ async function completeMission(missionId: string, playerId: string) {
     playerId,
     mission.targetNodeId,
     mission.droneId,
-    effectiveStats.cargoCapacity
+    finalCargoCapacity
   );
   
   if (!result.success) {
