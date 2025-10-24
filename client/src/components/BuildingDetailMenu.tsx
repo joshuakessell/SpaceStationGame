@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Coins, Wrench, Gem, X, Zap } from "lucide-react";
+import { Coins, Wrench, Gem, X, Zap, MapPin } from "lucide-react";
 
 interface BuildingDetailMenuProps {
   name: string;
@@ -22,6 +22,7 @@ interface BuildingDetailMenuProps {
   maxStorage?: number;
   currentStorage?: number;
   resourceType?: "metal" | "crystal";
+  onOpenStarMap?: () => void;
 }
 
 export default function BuildingDetailMenu({
@@ -38,6 +39,7 @@ export default function BuildingDetailMenu({
   maxStorage,
   currentStorage = 0,
   resourceType,
+  onOpenStarMap,
 }: BuildingDetailMenuProps) {
   return (
     <Card className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 bg-card/95 backdrop-blur" data-testid="building-detail-menu">
@@ -111,18 +113,29 @@ export default function BuildingDetailMenu({
         )}
       </CardContent>
 
-      {onUpgrade && (
-        <CardFooter>
+      <CardFooter className="flex gap-2">
+        {onOpenStarMap && (
+          <Button
+            onClick={onOpenStarMap}
+            variant="outline"
+            className="flex-1"
+            data-testid="button-open-star-map"
+          >
+            <MapPin className="mr-2 h-4 w-4" />
+            Open Star Map
+          </Button>
+        )}
+        {onUpgrade && (
           <Button
             onClick={onUpgrade}
             disabled={!canUpgrade}
-            className="w-full"
+            className="flex-1"
             data-testid="button-upgrade-building"
           >
             {canUpgrade ? `Upgrade to Level ${level + 1}` : "Insufficient Resources"}
           </Button>
-        </CardFooter>
-      )}
+        )}
+      </CardFooter>
     </Card>
   );
 }

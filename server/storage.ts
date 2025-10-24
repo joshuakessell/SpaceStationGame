@@ -1,15 +1,18 @@
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { 
   users, 
   players, 
   buildings,
+  resourceNodes,
   type User, 
   type UpsertUser,
   type Player,
   type InsertPlayer,
   type Building,
-  type InsertBuilding
+  type InsertBuilding,
+  type ResourceNode,
+  type InsertResourceNode
 } from "@shared/schema";
 
 export interface IStorage {
@@ -27,6 +30,12 @@ export interface IStorage {
   createBuilding(building: InsertBuilding): Promise<Building>;
   updateBuilding(id: string, updates: Partial<Building>): Promise<Building>;
   deleteBuilding(id: string): Promise<void>;
+
+  // Resource node operations
+  getPlayerResourceNodes(playerId: string): Promise<ResourceNode[]>;
+  createResourceNode(node: InsertResourceNode): Promise<ResourceNode>;
+  updateResourceNode(id: string, updates: Partial<ResourceNode>): Promise<ResourceNode>;
+  getResourceNode(id: string): Promise<ResourceNode | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -92,6 +101,30 @@ export class DatabaseStorage implements IStorage {
 
   async deleteBuilding(id: string): Promise<void> {
     await db.delete(buildings).where(eq(buildings.id, id));
+  }
+
+  // Resource node operations
+  async getPlayerResourceNodes(playerId: string): Promise<ResourceNode[]> {
+    return await db.select().from(resourceNodes).where(eq(resourceNodes.playerId, playerId));
+  }
+
+  async createResourceNode(nodeData: InsertResourceNode): Promise<ResourceNode> {
+    const [node] = await db.insert(resourceNodes).values(nodeData).returning();
+    return node;
+  }
+
+  async updateResourceNode(id: string, updates: Partial<ResourceNode>): Promise<ResourceNode> {
+    const [node] = await db
+      .update(resourceNodes)
+      .set(updates)
+      .where(eq(resourceNodes.id, id))
+      .returning();
+    return node;
+  }
+
+  async getResourceNode(id: string): Promise<ResourceNode | undefined> {
+    const [node] = await db.select().from(resourceNodes).where(eq(resourceNodes.id, id));
+    return node;
   }
 }
 

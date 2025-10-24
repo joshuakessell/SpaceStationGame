@@ -6,6 +6,7 @@ import SpaceStation from "@/components/SpaceStation";
 import TutorialDialog from "@/components/TutorialDialog";
 import BuildMenu from "@/components/BuildMenu";
 import BuildingDetailMenu from "@/components/BuildingDetailMenu";
+import { StarMap } from "@/components/StarMap";
 import { Settings, Swords } from "lucide-react";
 import type { Player, Building } from "@shared/schema";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -36,6 +37,7 @@ export default function Game() {
   const { toast } = useToast();
   const [showBuildMenu, setShowBuildMenu] = useState(false);
   const [selectedBuilding, setSelectedBuilding] = useState<string | null>(null);
+  const [showStarMap, setShowStarMap] = useState(false);
 
   // Fetch player data
   const { data: player, isLoading: playerLoading } = useQuery<Player>({
@@ -276,6 +278,16 @@ export default function Game() {
         reason: !hasCommand ? "Requires Command Center" : undefined,
       },
       {
+        id: "scanner",
+        name: "Scanner Array",
+        icon: "📡",
+        description: "Scans for asteroid clusters containing iron. Access the Star Map to discover mining opportunities.",
+        cost: { credits: 200, metal: 100, crystals: 0 },
+        buildTime: 12,
+        available: hasCommand && !buildings.some((b) => b.buildingType === "scanner"),
+        reason: !hasCommand ? "Requires Command Center" : undefined,
+      },
+      {
         id: "crystal",
         name: "Crystal Synthesizer",
         icon: "💎",
@@ -301,8 +313,8 @@ export default function Game() {
     ...b,
     id: b.buildingType,
     position: { x: b.positionX, y: b.positionY },
-    icon: b.buildingType === "command" ? "🏢" : b.buildingType === "mine" ? "⛏️" : "💎",
-    description: b.buildingType === "command" ? "Command Center" : b.buildingType === "mine" ? "Ore Mine" : "Crystal Synthesizer",
+    icon: b.buildingType === "command" ? "🏢" : b.buildingType === "mine" ? "⛏️" : b.buildingType === "scanner" ? "📡" : "💎",
+    description: b.buildingType === "command" ? "Command Center" : b.buildingType === "mine" ? "Ore Mine" : b.buildingType === "scanner" ? "Scanner Array" : "Crystal Synthesizer",
     resourceType: (b.resourceType === "metal" || b.resourceType === "crystals") ? b.resourceType as "metal" | "crystal" : undefined,
     currentStorage: b.currentStorage || undefined,
     maxStorage: b.maxStorage || undefined,
@@ -412,8 +424,16 @@ export default function Game() {
           maxStorage={selectedBuildingData.maxStorage || undefined}
           currentStorage={Math.floor(selectedBuildingData.currentStorage || 0)}
           resourceType={selectedBuildingData.resourceType as "metal" | "crystal" | undefined}
+          onOpenStarMap={selectedBuildingData.buildingType === "scanner" ? () => setShowStarMap(true) : undefined}
         />
       )}
+
+      {/* Star Map */}
+      <StarMap
+        open={showStarMap}
+        onOpenChange={setShowStarMap}
+        scannerLevel={buildings.find(b => b.buildingType === "scanner" && b.isBuilt)?.level || 0}
+      />
     </div>
   );
 }

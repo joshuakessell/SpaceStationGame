@@ -1,5 +1,24 @@
 # Space Base Showdown
 
+## Recent Changes
+
+### Phase 1: Database Foundation (Completed)
+**Date**: October 24, 2025
+
+Comprehensive database schema implemented for all 9 game phases:
+- **Core Systems**: Enhanced players table with exotic/energyCells resources, power tracking, fleet limits
+- **Mining Systems**: resourceNodes (asteroids/rifts), drones, extractionArrays, missions tables
+- **Research System**: researchProjects, playerTechUnlocks tables supporting MD/SR/SL tech trees
+- **Combat Systems**: ships, shipLoadouts, fleets, battles tables with full combat stats
+- **Multiplayer Prep**: guildMembers table for future features
+
+**Key Architectural Decisions**:
+- Kept legacy `buildings` table for backward compatibility
+- Added comprehensive FK constraints for referential integrity
+- Created performance indexes on playerId, status, and type columns
+- Avoided circular reference (drones↔missions) by managing currentMissionId in application logic
+- Support for all research IDs from game design (MD-001 through SL-012)
+
 ## Overview
 
 Space Base Showdown is a browser-based space strategy and idle game where players build and manage their space station, gather resources, train units, and engage in tactical battles. The game features a playful sci-fi aesthetic with base building mechanics inspired by games like Clash of Clans, combined with resource management and turn-based combat systems.
@@ -73,19 +92,64 @@ Preferred communication style: Simple, everyday language.
 - `users` - Authentication user data (managed by Replit Auth)
 - `sessions` - Session storage for authentication
 - `players` - Game-specific player data (references users, cascade delete)
-  - Resources: credits, metal, crystals
-  - Tutorial progress tracking
+  - Resources: credits, metal, crystals, exotic, energyCells
+  - Storage caps and power tracking (generation/consumption)
+  - Fleet limits (maxDrones, maxPlanetaryDrones, maxExtractionArrays)
+  - Tutorial progress and hub level tracking
   - Timestamps for state management
-- `buildings` - Player-owned buildings
+- `buildings` - Legacy player-owned buildings (kept for backward compatibility)
   - Type, level, position data
   - Production rates and storage capacities
   - Built/upgrading states with timestamps
   - Resource accumulation tracking (lastCollectedAt, currentStorage)
+- `station_modules` - New modular building system (Phase 5+)
+  - Module identity (type, name, level)
+  - Power system (tier, output, cost)
+  - Position, build/upgrade state and timing
+- `resource_nodes` - Asteroid clusters and crystal rifts
+  - Discovery system (distance class, discovered status)
+  - Finite resource pools (totalIron, remainingIron)
+  - Rift stability and energy output
+  - Depletion tracking
+- `drones` - Mining and planetary drones
+  - Tier-based stats (speed, cargo, harvest rate)
+  - Status tracking (idle, traveling, mining, returning)
+  - Current mission linkage
+- `extraction_arrays` - Crystal rift extraction platforms
+  - Tier-based stats (uplink, beam stability, range)
+  - Target rift deployment
+  - Status tracking
+- `missions` - Drone trips and array deployments
+  - Mission type and status
+  - Entity relationships (drone, array, target node)
+  - Cargo and timing information
+- `research_projects` - Active research in progress
+  - Research ID from tech trees (MD-001 to MD-020, SR-001 to SR-009, SL-001 to SL-012)
+  - Category, status, timing
+- `player_tech_unlocks` - Permanent research progress
+  - Unlocked research IDs
+  - Timestamp tracking
+- `ships` - Player's built combat ships
+  - Ship type and stats (HP, shield, hull, initiative, movement, attack, energy)
+  - Fleet assignment
+- `ship_loadouts` - Equipped weapons and mods
+  - Primary/secondary weapons
+  - Mod slots (up to 2)
+- `fleets` - Battle formations
+  - Ship positions on 6x4 grid (JSON)
+  - Active status
+- `battles` - Combat history
+  - Battle type (AI, PvP, tutorial)
+  - Fleet assignments and outcome
+  - Rewards (credits, metal, crystals, exotic)
+  - Battle log (turn-by-turn events)
+- `guild_members` - Future multiplayer infrastructure
 
 **Data Relationships**:
 - One-to-one: User → Player
-- One-to-many: Player → Buildings
-- Cascade deletion ensures data integrity when users are removed
+- One-to-many: Player → Buildings, StationModules, ResourceNodes, Drones, ExtractionArrays, Missions, Ships, Fleets
+- Foreign key constraints with cascade/set null policies ensure data integrity
+- Indexes on playerId, status, and type columns for query performance
 
 **Type Safety**: 
 - Zod schemas generated from Drizzle schema for validation

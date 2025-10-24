@@ -223,6 +223,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all resource nodes for authenticated player
+  app.get('/api/resource-nodes', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const nodes = await storage.getPlayerResourceNodes(userId);
+      res.json(nodes);
+    } catch (error) {
+      console.error("Error fetching resource nodes:", error);
+      res.status(500).json({ message: "Failed to fetch resource nodes" });
+    }
+  });
+
+  // Scan for new asteroid clusters
+  app.post('/api/resource-nodes/scan', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Get player and their buildings to determine scanner level
+      const player = await storage.getPlayer(userId);
+      if (!player) {
+        return res.status(404).json({ message: "Player not found" });
+      }
+
+      const buildings = await storage.getPlayerBuildings(userId);
+      const scannerBuilding = buildings.find(b => b.buildingType === 'scanner' && b.isBuilt);
+      
+      if (!scannerBuilding) {
+        return res.status(400).json({ message: "Scanner Array not built" });
+      }
+
+      const scannerLevel = scannerBuilding.level;
+      
+      // Get existing nodes
+      const existingNodes = await storage.getPlayerResourceNodes(userId);
+      const discoveredCount = existingNodes.filter(n => n.isDiscovered && n.nodeType === 'asteroid_cluster').length;
+      
+      // Determine scan capacity based on scanner level
+      let maxClusters = 2;
+      let allowedRanges = ['short'];
+      if (scannerLevel >= 2) {
+        maxClusters = 4;
+        allowedRanges = ['short', 'mid'];
+      }
+      if (scannerLevel >= 3) {
+        maxClusters = 6;
+        allowedRanges = ['short', 'mid', 'deep'];
+      }
+
+      // Check if we can discover more
+      if (discoveredCount >= maxClusters) {
+        return res.status(400).json({ message: "Maximum clusters already discovered for current scanner level" });
+      }
+
+      // Find undiscovered nodes or create new ones
+      const undiscoveredNodes = existingNodes.filter(n => !n.isDiscovered && n.nodeType === 'asteroid_cluster');
+      let nodeToDiscover = undiscoveredNodes[0];
+
+      // If no undiscovered nodes exist, create a new one
+      if (!nodeToDiscover) {
+        const distanceOptions = allowedRanges;
+        const distanceClass = distanceOptions[Math.floor(Math.random() * distanceOptions.length)];
+        
+        // Generate random Iron amount based on distance
+        let ironAmount = 1000;
+        if (distanceClass === 'mid') ironAmount = 2500;
+        if (distanceClass === 'deep') ironAmount = 5000;
+        
+        // Add some randomness
+        ironAmount = Math.floor(ironAmount * (0.8 + Math.random() * 0.4));
+
+        nodeToDiscover = await storage.createResourceNode({
+          playerId: userId,
+          nodeType: 'asteroid_cluster',
+          nodeName: `Asteroid Cluster ${String.fromCharCode(65 + discoveredCount)}${Math.floor(Math.random() * 99)}`,
+          distanceClass,
+          totalIron: ironAmount,
+          remainingIron: ironAmount,
+          isDiscovered: false,
+        });
+      }
+
+      // Mark as discovered
+      const discoveredNode = await storage.updateResourceNode(nodeToDiscover.id, {
+        isDiscovered: true,
+        discoveredAt: new Date(),
+      });
+
+      res.json({
+        message: "New asteroid cluster discovered!",
+        node: discoveredNode,
+      });
+    } catch (error) {
+      console.error("Error scanning for clusters:", error);
+      res.status(500).json({ message: "Failed to scan for clusters" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
