@@ -1,0 +1,197 @@
+Below are four data structures for direct use in implementation.
+
+All resource names are canonical:
+
+* Iron
+* Crystal
+* Exotic (planetary rare material)
+* EnergyCells (refined high-density power cells from advanced generators)
+
+All time values are research/build timers.
+
+All prereqs reference module levels:
+
+* Command_Core_LvX
+* Drone_Hangar_LvX
+* Research_Bay_LvX
+* Science_Lab_LvX
+* Power_Module_TierX (Tier1 Solar Relay, Tier2 Fusion Core, Tier3 Antimatter, Tier4 Quantum)
+
+All unlocks should be treated as booleans or level gates in code.
+
+SECTION 1. MINING DRONE RESEARCH TABLE
+Research conducted in Drone Hangar / Mining Operations branch.
+These affect asteroid-mining Iron drones and planetary-scout Exotic drones.
+
+| Research_ID | Research_Name               | Tier | Description                                                                              | Prereqs                                       | Resource_Cost (Iron / Crystal / Exotic / EnergyCells)  | Time | Unlocks_Effect                                                |
+| ----------- | --------------------------- | ---- | ---------------------------------------------------------------------------------------- | --------------------------------------------- | ------------------------------------------------------ | ---- | ------------------------------------------------------------- |
+| MD-001      | Basic Mining Drone Chassis  | 1    | Unlocks baseline Mining Drone (slow, low cargo).                                         | Command_Core_Lv1                              | 100 Iron                                               | 1m   | Enables building Mining_Drone_Mk1.                            |
+| MD-002      | Travel Thrusters I          | 1    | +20% Travel_Speed for Mining_Drone_Mk1.                                                  | MD-001                                        | 200 Iron                                               | 2m   | Drone.Travel_Speed += 20%.                                    |
+| MD-003      | Cargo Rack I                | 1    | +25% Cargo_Capacity for Mining_Drone_Mk1.                                                | MD-001                                        | 150 Iron                                               | 2m   | Drone.Cargo_Capacity += 25%.                                  |
+| MD-004      | Harvest Laser I             | 1    | +15% Harvest_Rate at asteroid cluster.                                                   | MD-001                                        | 150 Iron                                               | 2m   | Drone.Harvest_Rate += 15%.                                    |
+| MD-005      | Fleet Control Uplink I      | 1    | +1 Max_Active_Drones.                                                                    | Command_Core_Lv2, Drone_Hangar_Lv2            | 300 Iron                                               | 3m   | Player.Max_Drones += 1.                                       |
+| MD-006      | Auto-Routing Protocol       | 2    | Allows drones to auto-pick richest known cluster instead of manual assign.               | MD-002, MD-003, MD-004                        | 250 Iron / 50 Crystal                                  | 5m   | Drone.AI_Mode = AutoAssign.                                   |
+| MD-007      | Mid-Range Asteroid Scanning | 2    | Scanner can reveal Mid Range clusters (medium distance).                                 | Scanner_Array_Lv2, Research_Bay_Lv1           | 200 Iron / 100 Crystal                                 | 5m   | Unlock MidRange_ClustersVisible = true.                       |
+| MD-008      | Mining Drone Mk2 Chassis    | 2    | New chassis: faster engine, bigger hold, sturdier frame. Replaces Mk1 build default.     | MD-002, MD-003, MD-004, Power_Module_Tier1    | 400 Iron / 150 Crystal                                 | 10m  | Enables Mining_Drone_Mk2.                                     |
+| MD-009      | Cargo Rack II               | 2    | Mk2 cargo +35%.                                                                          | MD-008                                        | 300 Iron / 100 Crystal                                 | 10m  | Mk2.Cargo_Capacity += 35%.                                    |
+| MD-010      | Deep Range Navigation       | 3    | Unlocks Deep Range asteroid clusters scanning.                                           | MD-007, Scanner_Array_Lv3                     | 500 Iron / 300 Crystal                                 | 12m  | Unlock DeepRange_ClustersVisible = true.                      |
+| MD-011      | Warp Transit Frame          | 3    | Planetary Drone Mk1 for Exotic scanning (fast interplanetary).                           | Research_Bay_Lv2, Science_Lab_Lv1             | 600 Iron / 300 Crystal / 50 Exotic                     | 12m  | Enables Planetary_Drone_Mk1 build.                            |
+| MD-012      | Planetary Armor Plating I   | 3    | Adds light defensive plating to Planetary_Drone_Mk1 so it can survive hazards.           | MD-011                                        | 400 Iron / 200 Crystal / 40 Exotic                     | 15m  | Planetary_Drone_Mk1.Durability += 20%.                        |
+| MD-013      | Warp Drive Boost I          | 3    | +30% Travel_Speed for Planetary_Drone_Mk1 between planets.                               | MD-011                                        | 300 Iron / 300 Crystal / 60 Exotic                     | 15m  | Planetary_Drone_Mk1.Travel_Speed += 30%.                      |
+| MD-014      | Exotic Cargo Pods I         | 3    | +25% Cargo_Capacity for Exotic hauls per trip.                                           | MD-011                                        | 300 Iron / 150 Crystal / 80 Exotic                     | 15m  | Planetary_Drone_Mk1.Cargo_Capacity += 25%.                    |
+| MD-015      | Fleet Control Uplink II     | 4    | +2 Max_Active_Drones AND +1 Max_Active_Planetary_Drones.                                 | MD-005, Power_Module_Tier2, Drone_Hangar_Lv3  | 800 Iron / 400 Crystal / 100 Exotic                    | 30m  | Player.Max_Drones += 2; Player.Max_Planetary_Drones += 1.     |
+| MD-016      | Auto-Defend Protocol        | 4    | Planetary drones engage pirates / wildlife. Unlocks Defensive Turret mount stat.         | MD-012, MD-013                                | 500 Iron / 500 Crystal / 150 Exotic                    | 30m  | Planetary_Drone_Mk1.Unlock_TurretSlot = true.                 |
+| MD-017      | Extraction AI Optimization  | 5    | Mining drones pick highest-Yield/hour across all known clusters (Iron efficiency boost). | MD-006, MD-010, Research_Bay_Lv3              | 700 Iron / 600 Crystal / 200 Exotic                    | 1h   | Drone.AI_Mode = AutoMaxYield. Global_Iron_Per_Minute += ~10%. |
+| MD-018      | Rift Stabilizer Interface   | 5    | Arrays last longer on Crystal Rifts.                                                     | Science_Lab_Lv2, Power_Module_Tier3           | 500 Iron / 800 Crystal / 250 Exotic                    | 2h   | Crystal_Rift_DecayRate *= 0.8.                                |
+| MD-019      | Planetary Drone Mk2 Chassis | 5    | Heavier Exotic hauler: high cargo, better durability.                                    | MD-011, MD-016, Power_Module_Tier3            | 1000 Iron / 800 Crystal / 400 Exotic / 20 EnergyCells  | 4h   | Enables Planetary_Drone_Mk2 build.                            |
+| MD-020      | Auto-Expansion Directive    | 6    | Unlocks scanning of new systems (future multi-system support).                           | MD-019, Scanner_Array_Lv4, Power_Module_Tier4 | 1500 Iron / 1200 Crystal / 600 Exotic / 40 EnergyCells | 8h   | Unlock MultiSystemScan = true (future expansion hook).        |
+
+SECTION 2. SHIP RESEARCH MODULE TABLE
+This is chassis and combat ship unlock research. Conducted in the Drone Tech / Battle Research module of the Research Bay.
+
+Chassis are used in combat (the 6-ship battle grid). Each chassis has base stats and compatible weapon classes. Unlocking a chassis also unlocks its build permissions in the correct Foundry size.
+
+| ShipRes_ID | Ship_Type_Name        | Role                       | Description                                                                                           | Required_Module_Levels                                   | Resource_Cost (Iron / Crystal / Exotic / EnergyCells)  | Time | Unlocks                                        |
+| ---------- | --------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------ | ---- | ---------------------------------------------- |
+| SR-001     | Light Scout Drone     | Interceptor / Fast DPS     | Cheap fast unit. Low HP, high Initiative. Uses Kinetic (bullets).                                     | Research_Bay_Lv1, Small_Foundry_Lv1                      | 200 Iron                                               | 2m   | Enables build of Light_Scout in Small_Foundry. |
+| SR-002     | Shield Guardian       | Tank / Protector           | High Shield pool. Low Movement. Good for frontline soak. Uses Phaser for constant aggro. Weak vs EMP. | Research_Bay_Lv1, Small_Foundry_Lv2                      | 300 Iron / 100 Crystal                                 | 5m   | Enables build of Shield_Guardian.              |
+| SR-003     | Plasma Bruiser        | Brawler / Short Range AoE  | Medium HP, heavy Plasma burst at close range. Strong vs Heavy Hull. Weak at long range.               | Research_Bay_Lv2, Medium_Foundry_Lv1, Power_Module_Tier2 | 500 Iron / 200 Crystal                                 | 10m  | Enables build of Plasma_Bruiser.               |
+| SR-004     | EMP Disruptor Drone   | Control / Debuff           | Fires EMP pulses. Deletes Shield and slows enemy Initiative. Fragile hull.                            | Research_Bay_Lv2, Medium_Foundry_Lv2                     | 400 Iron / 300 Crystal                                 | 10m  | Enables EMP_Disruptor.                         |
+| SR-005     | Torpedo Frigate Drone | Artillery / Burst Finisher | Slow Initiative, long-range torpedo alpha. Can target backline. High cooldown.                        | Research_Bay_Lv2, Medium_Foundry_Lv3, Power_Module_Tier2 | 600 Iron / 300 Crystal / 50 Exotic                     | 15m  | Enables Torpedo_Frigate.                       |
+| SR-006     | Support Field Drone   | Healer / Buffer            | Restores Shield to allies, cleanses debuffs, boosts Initiative slightly. Low offense.                 | Research_Bay_Lv3, Medium_Foundry_Lv3, Science_Lab_Lv1    | 500 Iron / 400 Crystal / 100 Exotic                    | 20m  | Enables Support_Field_Drone.                   |
+| SR-007     | Heavy Bomber Frame    | Siege / Hull Breaker       | High Hull Strength, slow Movement, drops Plasma/Thermal bombs that inflict Hull Breach.               | Research_Bay_Lv3, Large_Foundry_Lv1, Power_Module_Tier3  | 800 Iron / 600 Crystal / 200 Exotic                    | 30m  | Enables Heavy_Bomber.                          |
+| SR-008     | Stealth Recon Frame   | Assassin / Backline Killer | High Initiative, bypasses frontline to strike fragile enemies. Weak vs Thermal lock weapons.          | Research_Bay_Lv3, Large_Foundry_Lv2, Science_Lab_Lv2     | 700 Iron / 700 Crystal / 250 Exotic                    | 30m  | Enables Stealth_Recon.                         |
+| SR-009     | Aegis Command Carrier | Late-game Anchor           | Massive Shield + Hull, aura buffs allies (Shield regen, Resistance). Requires extreme power.          | Research_Bay_Lv4, Large_Foundry_Lv3, Power_Module_Tier4  | 1500 Iron / 1200 Crystal / 600 Exotic / 50 EnergyCells | 8h   | Enables Aegis_Command_Carrier.                 |
+
+Foundry tiers:
+
+* Small_Foundry builds SR-001, SR-002 type hulls.
+* Medium_Foundry builds SR-003 to SR-006.
+* Large_Foundry builds SR-007+.
+
+SECTION 3. SCIENCE LAB TECH TREE TABLE
+This governs high-level tech unlocks used as prerequisites for ships, weapons, mods, generators, and Warp Gate.
+
+These are not ships. These are enabling technologies.
+
+| Tech_ID | Tech_Name                    | Category          | Description                                                                                         | Prereqs                                     | Resource_Cost (Iron / Crystal / Exotic / EnergyCells)  | Time | Grants                                                                   |
+| ------- | ---------------------------- | ----------------- | --------------------------------------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------ | ---- | ------------------------------------------------------------------------ |
+| SL-001  | Basic Shield Physics         | Defense           | Increases base Shield capacity for all ships by +10%.                                               | Science_Lab_Lv1                             | 200 Iron / 100 Crystal                                 | 5m   | Global_Mod Shield_Capacity +=10%. Required for SR-002.                   |
+| SL-002  | Phaser Conduction Lattice    | Weapons_Energy    | Improves Phaser efficiency vs Shield.                                                               | SL-001, Power_Module_Tier1                  | 150 Iron / 150 Crystal                                 | 5m   | Phaser_vs_Shield_Multiplier = 1.25. Required for Shield_Guardian weapon. |
+| SL-003  | Plasma Containment Field     | Weapons_Plasma    | Allows stable Plasma weapon mounting.                                                               | Science_Lab_Lv1, Research_Bay_Lv2           | 300 Iron / 200 Crystal                                 | 10m  | Unlocks Plasma class weapons for SR-003 / SR-007.                        |
+| SL-004  | EMP Pulse Harmonizer         | Weapons_EMP       | Calibrates EMP to disrupt enemy Initiative and Movement.                                            | Science_Lab_Lv1, Power_Module_Tier2         | 300 Iron / 300 Crystal                                 | 10m  | Unlocks EMP weapons for SR-004. Also enables Systems_Disrupt debuff.     |
+| SL-005  | High-Energy Torpedo Guidance | Weapons_Explosive | Long-range lock and backline targeting.                                                             | SL-002, Research_Bay_Lv2                    | 400 Iron / 300 Crystal / 50 Exotic                     | 15m  | Unlocks Torpedo launcher for SR-005. Enables Hull_Breach debuff.         |
+| SL-006  | Field Repair Nanocloud       | Support           | Enables in-battle Shield restore and debuff cleanse.                                                | Science_Lab_Lv2, Power_Module_Tier2         | 500 Iron / 400 Crystal / 100 Exotic                    | 20m  | Unlocks Support_Field_Drone abilities.                                   |
+| SL-007  | Quantum Warp Stabilizer      | Mobility          | Short-hop warp drive for Planetary_Drone_Mk1+ and Stealth_Recon. Faster travel and backline strike. | Science_Lab_Lv2, MD-013                     | 600 Iron / 500 Crystal / 200 Exotic                    | 30m  | Movement_Speed +=15% for eligible frames. Enables Stealth_Recon SR-008.  |
+| SL-008  | Adaptive Hull Matrix         | Survivability     | Boosts Hull Strength scaling. Also enables Heavy_Bomber armor.                                      | Science_Lab_Lv2, Power_Module_Tier3         | 800 Iron / 700 Crystal / 200 Exotic                    | 1h   | Hull_Strength_BaseMultiplier +=10%. Required for SR-007.                 |
+| SL-009  | Distributed Shield Projector | Fleet_Aura        | Allows one ship to project a team buff (Aegis).                                                     | Science_Lab_Lv3, Power_Module_Tier4         | 1200 Iron / 1000 Crystal / 500 Exotic / 20 EnergyCells | 4h   | Enables Aegis aura on Aegis_Command_Carrier SR-009.                      |
+| SL-010  | Warp Gate Synchronizer Mk1   | Infrastructure    | Enables Warp Gate Tier 1 (AI battle access).                                                        | Science_Lab_Lv1, Power_Module_Tier2         | 400 Iron / 200 Crystal                                 | 10m  | Player can build Warp_Gate_Tier1.                                        |
+| SL-011  | Warp Gate Synchronizer Mk2   | Infrastructure    | Enables Warp Gate Tier 2 (matchmaking / multiplayer hook).                                          | SL-010, Science_Lab_Lv3, Power_Module_Tier4 | 1000 Iron / 800 Crystal / 400 Exotic / 40 EnergyCells  | 8h   | Player can build Warp_Gate_Tier2.                                        |
+| SL-012  | Guild Quantum Link           | Social            | Enables Guild_Comm_Node.                                                                            | Science_Lab_Lv3, Power_Module_Tier4         | 800 Iron / 800 Crystal / 300 Exotic / 20 EnergyCells   | 6h   | Unlock Guild_Comm_Node module (social / alliance).                       |
+
+Notes:
+
+* Science Lab levels gate access to later tech.
+* Many ship unlocks are gated behind specific SL tech and power tier so progression is layered, not flat.
+
+SECTION 4. SHIP STATS AND FORMULAS TABLE
+This table defines how to calculate each ship’s combat stats and how equipped upgrades (mods, tech) affect them.
+Replit should model ships as objects with base stats plus layered modifiers:
+
+Variables:
+
+* Base_HP, Base_Shield, Base_HullStrength, Base_Initiative, Base_Move, Base_AttackSpeed, Base_EnergyRegen.
+* Global bonuses from Science Lab tech.
+* Per-ship equipped Mods (at most 2).
+* Weapon-type bonuses (Plasma, EMP, Torpedo, etc.).
+* Chassis role flags (Light Frame, Shielded Frame, Heavy Frame, Stealth Frame).
+
+We express formulas in pseudocode.
+
+| Ship_Type             | Frame_Class                     | Base_Stat_Formulas                                                                                                                                                               | Compatible_Weapons                                                             | Compatible_Mods                                                          | Research_Prereqs                  | Battle_Impact_Notes                                                                                                 |
+| --------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------ | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Light_Scout           | Light Frame                     | HP = 1000 * (1 + SL_ShieldPhys?0:0); Shield = 200 * (1 + SL_ShieldPhys?0.1:0); HullStrength = 0.05; Initiative = 140; Move = 3 tiles/turn; AttackSpeed = Fast; EnergyRegen = Low | Kinetic (Bullets), Thermal (later), Small EMP burst (later)                    | Offense mods (Plasma_Overcharge not allowed), Speed mods, Evasion mods   | SR-001, SL-001 (for Shield bonus) | Fast turn gain. Dies fast if focused. Good at deleting fragile backline once Thermal lock exists to reveal Stealth. |
+| Shield_Guardian       | Shielded Frame                  | HP = 1500; Shield = 1000 * (1 + SL_ShieldPhys?0.1:0); HullStrength = 0.10; Initiative = 80; Move = 1; AttackSpeed = Medium; EnergyRegen = Medium                                 | Phaser, EMP (defensive burst), Short-range Kinetic                             | Defense mods (EMP_Hardening), Shield_Regen mods, Taunt-style threat mods | SR-002, SL-001, SL-002            | Acts as frontline tank. Weak to EMP. High Shield so EMP counters it hard.                                           |
+| Plasma_Bruiser        | Heavy Frame                     | HP = 1800; Shield = 400; HullStrength = 0.20 * (1 + SL_AdaptiveHull?0.1:0); Initiative = 90; Move = 2; AttackSpeed = Medium; EnergyRegen = Medium                                | Plasma (AoE burn), Short-range Kinetic backup                                  | Offensive mods (Plasma_Overcharge), Hull buffs                           | SR-003, SL-003                    | Strong vs Heavy hull targets. Applies Plasma burn DoT that ignores part of HullStrength. Must close distance.       |
+| EMP_Disruptor         | Light Frame                     | HP = 900; Shield = 300; HullStrength = 0.05; Initiative = 130; Move = 2; AttackSpeed = Slow; EnergyRegen = High                                                                  | EMP pulse (Shield shred + Initiative slow); weak backup Kinetic                | Control mods (EMP_Amplifier), Speed mods                                 | SR-004, SL-004                    | Deletes Shield then cripples Initiative. Very fragile. If killed early, enemy tanks stabilize.                      |
+| Torpedo_Frigate       | Heavy Frame                     | HP = 2000; Shield = 500; HullStrength = 0.25 * (1 + SL_AdaptiveHull?0.1:0); Initiative = 70; Move = 1; AttackSpeed = Very Slow; EnergyRegen = Medium                             | Torpedoes / Rockets (burst, long cooldown, can hit backline), Kinetic fallback | Offensive mods (Torpedo_Amplifier), Defensive mods (Hull_Reinforcement)  | SR-005, SL-005                    | Opens fights with Hull Breach on priority targets. Needs protection because Initiative is low.                      |
+| Support_Field_Drone   | Support Frame (counts as Light) | HP = 1100; Shield = 600 * (1 + SL_ShieldPhys?0.1:0); HullStrength = 0.08; Initiative = 100; Move = 2; AttackSpeed = Slow; EnergyRegen = High                                     | Support Beam (Shield restore + cleanse), Low-power Phaser poke                 | Support mods (Heal_Boost, Cleanse_Boost), Defensive mods                 | SR-006, SL-006                    | Extends survivability of tanks and slows attrition. Cleanses debuffs (removes Hull Breach, Systems Disrupt).        |
+| Heavy_Bomber          | Heavy Frame                     | HP = 2400; Shield = 400; HullStrength = 0.30 * (1 + SL_AdaptiveHull?0.1:0); Initiative = 60; Move = 1; AttackSpeed = Slow; EnergyRegen = Medium                                  | Plasma Bomb (AoE + Hull Breach), Thermal Bomb                                  | Offensive mods (Plasma_Overcharge, Breach_Extender), Hull mods           | SR-007, SL-003, SL-008            | Siege role. Breaks entrenched tanks. Very slow. Needs escort.                                                       |
+| Stealth_Recon         | Stealth Frame                   | HP = 1000; Shield = 300; HullStrength = 0.10; Initiative = 150 * (1 + SL_QuantumWarp?0.15:0); Move = 3 (teleport-like); AttackSpeed = Medium; EnergyRegen = Medium               | Kinetic precision strike, Thermal lock-on (reveals stealth), light Torpedo     | Offensive mods (Crit_Boost, Speed_Boost), Stealth_Field mod              | SR-008, SL-007                    | Bypasses frontline, targets enemy backline units. Weak to Thermal.                                                  |
+| Aegis_Command_Carrier | Shielded Heavy Frame            | HP = 4000; Shield = 2000 * (1 + SL_ShieldPhys?0.1:0); HullStrength = 0.35 * (1 + SL_AdaptiveHull?0.1:0); Initiative = 50; Move = 1; AttackSpeed = Slow; EnergyRegen = High       | Phaser arrays, Team Aura Projector                                             | Defensive mods (EMP_Hardening, Aura_Extender), Support mods              | SR-009, SL-009                    | Provides team aura: +Shield Regen, +Resistance. Keystone unit in late-game comps. High cost and long build time.    |
+
+Explanation of formula references:
+
+* `SL_ShieldPhys` means player has researched SL-001 Basic Shield Physics.
+* `SL_AdaptiveHull` means player has researched SL-008 Adaptive Hull Matrix.
+* `SL_QuantumWarp` means player has researched SL-007 Quantum Warp Stabilizer.
+
+Final stat calculation for a ship instance at battle load-in should apply in order:
+
+1. Start from base line in this table.
+2. Apply global tech bonuses from unlocked Science Lab tech.
+3. Apply per-ship equipped Mods (max 2):
+
+   * Example DefensiveMod_EMP_Hardening: `Incoming_EMP_Damage *= 0.6` and `Systems_Disrupt_Duration *= 0.6`.
+   * Example OffensiveMod_Plasma_Overcharge: `Plasma_Damage *= 1.2` and `Plasma_Burn_Duration += 1 turn`.
+4. Apply temporary pre-battle buffs (if any future commander skills are added).
+5. Use final stats in combat loop.
+
+Damage mitigation in battle:
+
+* When resolving damage to Hull:
+  `FinalHullDamage = RawHullDamage * (1 - HullStrengthAfterBonuses)`
+  except where weapon ignores part of HullStrength:
+
+  * Plasma: ignore 50% of HullStrength
+    `EffectiveHullStrength = HullStrengthAfterBonuses * 0.5`
+  * Torpedo: treat HullStrengthAfterBonuses as 0.5x for first impact hit if Hull Breach is applied afterward.
+
+Shield interaction in battle:
+
+* EMP damage to Shield is doubled (2.0x) before Shield subtraction.
+* Torpedo damage to Shield is reduced to 0.75x before Shield subtraction.
+
+Initiative in battle:
+
+* Each ship has Initiative value (after mods, after tech).
+* Turn_Meter += Initiative per tick.
+* When Turn_Meter >= 1000, ship takes a turn and Turn_Meter -= 1000.
+* Debuff "Systems Disrupt" from EMP:
+  `Initiative *= 0.7`
+  `MovementSpeedTiles *= 0.7`
+  for debuff duration.
+
+Movement in battle:
+
+* MovementSpeedTiles is the Move stat in tiles/turn.
+* Stealth_Recon can "blink" 3 tiles ignoring blockers if SL-007 unlocked.
+
+Compatibility enforcement:
+
+* A ship may only mount weapons defined under Compatible_Weapons.
+* A ship may only equip Mods in Compatible_Mods.
+* A ship cannot equip more than 2 Mods total.
+* A ship may not equip duplicate Mods (same ID twice).
+* Some Mods require Tech_ID from Science Lab. Enforce prereq at equip time, not at battle time.
+
+Unlock/build logic:
+
+* A chassis cannot be constructed unless its SR-### is unlocked AND the appropriate Foundry tier building exists at required level AND required Science Lab tech has been researched AND station Power_Module tier is available (enough power budget).
+* If any prereq is missing, UI should show it as locked with "Requires X".
+
+With these four tables (Mining Drone Research, Ship Research Module, Science Lab Tech, Ship Stats/Formulas), Replit has:
+
+* All research dependencies
+* Costs and timers
+* Unlock rules
+* Stat formulas and battle math
+* Compatibility limits for gear / mods / weapons
+* Power tier and lab tier gates
+
+This is sufficient to:
+
+1. Implement build/research trees.
+2. Gate chassis availability by research and infrastructure.
+3. Compute combat stats at runtime from base chassis + tech + mods.
+4. Run deterministic turn-based auto combat with initiative, movement, range, weapon type, shield/hull interaction, elemental (tech signature) advantage, and debuffs.
