@@ -114,7 +114,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             metal: 10000,
             crystals: 10000,
             exotic: 10000,
-            energyCells: 10000,
             tutorialStep: "complete",
           });
         } else {

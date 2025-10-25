@@ -41,13 +41,11 @@ export const players = pgTable("players", {
   gold: integer("gold").notNull().default(1000),
   metal: integer("metal").notNull().default(100),
   crystals: integer("crystals").notNull().default(0),
-  exotic: integer("exotic").notNull().default(0), // Phase 6+ Planetary scanning
-  energyCells: integer("energy_cells").notNull().default(0), // Phase 5+ Advanced power
+  exotic: integer("exotic").notNull().default(0), // Rare items from exploration
   // Storage caps
   maxMetal: integer("max_metal").notNull().default(1000),
   maxCrystals: integer("max_crystals").notNull().default(500),
   maxExotic: integer("max_exotic").notNull().default(100),
-  maxEnergyCells: integer("max_energy_cells").notNull().default(50),
   // Power system (Phase 5)
   powerGeneration: integer("power_generation").notNull().default(0),
   powerConsumption: integer("power_consumption").notNull().default(0),
@@ -911,11 +909,9 @@ export const updatePlayerSchema = z.object({
   metal: z.number().optional(),
   crystals: z.number().optional(),
   exotic: z.number().optional(),
-  energyCells: z.number().optional(),
   maxMetal: z.number().optional(),
   maxCrystals: z.number().optional(),
   maxExotic: z.number().optional(),
-  maxEnergyCells: z.number().optional(),
   powerGeneration: z.number().optional(),
   powerConsumption: z.number().optional(),
   maxDrones: z.number().optional(),
