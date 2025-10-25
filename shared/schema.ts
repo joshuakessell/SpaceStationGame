@@ -194,7 +194,7 @@ export const POWER_MODULE_TIERS = [
     name: "Solar Array",
     powerOutput: 5,
     buildCost: { metal: 50, gold: 0 },
-    requiredHubLevel: 2,
+    requiredHubLevel: 1,
     buildTime: 30, // seconds
   },
   {
@@ -202,7 +202,7 @@ export const POWER_MODULE_TIERS = [
     name: "Fusion Reactor",
     powerOutput: 15,
     buildCost: { metal: 200, crystals: 50 },
-    requiredHubLevel: 4,
+    requiredHubLevel: 2,
     buildTime: 60,
   },
   {
@@ -210,7 +210,7 @@ export const POWER_MODULE_TIERS = [
     name: "Antimatter Generator",
     powerOutput: 40,
     buildCost: { metal: 500, crystals: 200 },
-    requiredHubLevel: 6,
+    requiredHubLevel: 3,
     buildTime: 90,
   },
   {
@@ -218,7 +218,7 @@ export const POWER_MODULE_TIERS = [
     name: "Quantum Core",
     powerOutput: 100,
     buildCost: { metal: 1500, crystals: 800 },
-    requiredHubLevel: 8,
+    requiredHubLevel: 4,
     buildTime: 120,
   },
   {
@@ -226,35 +226,25 @@ export const POWER_MODULE_TIERS = [
     name: "Dark Singularity",
     powerOutput: 250,
     buildCost: { metal: 5000, crystals: 3000 },
-    requiredHubLevel: 10,
+    requiredHubLevel: 5,
     buildTime: 180,
   },
 ] as const;
 
-// Central Hub upgrade configuration
+// Central Hub upgrade configuration (standardized to 5 levels)
 export const CENTRAL_HUB_CONFIG = {
-  maxLevel: 10,
+  maxLevel: 5,
   upgradeCosts: [
-    { level: 2, metal: 100, gold: 50 },
-    { level: 3, metal: 250, gold: 100 },
-    { level: 4, metal: 500, crystals: 100, gold: 150 },
-    { level: 5, metal: 1000, crystals: 200, gold: 250 },
-    { level: 6, metal: 2000, crystals: 500, gold: 400 },
-    { level: 7, metal: 3500, crystals: 1000, gold: 600 },
-    { level: 8, metal: 6000, crystals: 2000, gold: 1000 },
-    { level: 9, metal: 10000, crystals: 4000, gold: 1500 },
-    { level: 10, metal: 15000, crystals: 6000, gold: 2500 },
+    { level: 2, metal: 600, gold: 200 }, // L1→L2
+    { level: 3, metal: 2000, crystals: 400, gold: 600 }, // L2→L3
+    { level: 4, metal: 6000, crystals: 1500, gold: 1500 }, // L3→L4
+    { level: 5, metal: 15000, crystals: 5000, gold: 3500 }, // L4→L5
   ],
   upgradeDurations: [
-    { level: 2, seconds: 60 },
-    { level: 3, seconds: 90 },
-    { level: 4, seconds: 120 },
-    { level: 5, seconds: 180 },
-    { level: 6, seconds: 240 },
-    { level: 7, seconds: 300 },
-    { level: 8, seconds: 420 },
-    { level: 9, seconds: 600 },
-    { level: 10, seconds: 900 },
+    { level: 2, seconds: 120 }, // 2 minutes
+    { level: 3, seconds: 300 }, // 5 minutes
+    { level: 4, seconds: 600 }, // 10 minutes
+    { level: 5, seconds: 1200 }, // 20 minutes
   ],
 } as const;
 
