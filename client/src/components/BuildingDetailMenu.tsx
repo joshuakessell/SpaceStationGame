@@ -93,10 +93,10 @@ export default function BuildingDetailMenu({
           <div className="pt-4 border-t border-border">
             <h4 className="font-semibold text-sm mb-3">Upgrade to Level {level + 1}</h4>
             <div className="flex flex-wrap items-center gap-3 text-sm mb-3">
-              {upgradeCost.credits !== undefined && (
+              {upgradeCost.gold !== undefined && (
                 <div className="flex items-center gap-1">
                   <Coins className="w-4 h-4 text-accent" />
-                  <span className="font-semibold">{upgradeCost.credits}</span>
+                  <span className="font-semibold">{upgradeCost.gold}</span>
                 </div>
               )}
               {upgradeCost.metal !== undefined && (

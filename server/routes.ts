@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           player = await storage.createPlayer({
             id: userId,
             name: "",
-            credits: 10000,
+            gold: 10000,
             metal: 10000,
             crystals: 10000,
             exotic: 10000,
@@ -122,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           player = await storage.createPlayer({
             id: userId,
             name: "",
-            credits: 100,
+            gold: 100,
             metal: 50,
             crystals: 0,
             tutorialStep: "welcome",
@@ -431,16 +431,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Define drone costs based on tier
-      const droneCosts: { [key: number]: { credits: number; metal: number; crystals: number } } = {
-        1: { credits: 100, metal: 50, crystals: 0 },
-        2: { credits: 300, metal: 150, crystals: 25 },
-        3: { credits: 600, metal: 300, crystals: 75 },
+      const droneCosts: { [key: number]: { gold: number; metal: number; crystals: number } } = {
+        1: { gold: 100, metal: 50, crystals: 0 },
+        2: { gold: 300, metal: 150, crystals: 25 },
+        3: { gold: 600, metal: 300, crystals: 75 },
       };
 
       const cost = droneCosts[tier] || droneCosts[1];
 
       // Check if player has enough resources
-      if (player.credits < cost.credits || player.metal < cost.metal || player.crystals < cost.crystals) {
+      if (player.gold < cost.gold || player.metal < cost.metal || player.crystals < cost.crystals) {
         return res.status(400).json({ message: "Insufficient resources" });
       }
 
@@ -469,7 +469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Deduct resources from player
       await storage.updatePlayer(userId, {
-        credits: player.credits - cost.credits,
+        gold: player.gold - cost.gold,
         metal: player.metal - cost.metal,
         crystals: player.crystals - cost.crystals,
       });
@@ -709,9 +709,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get tier config
       const tierConfig = [
-        { id: 1, name: "T1 Array", baseExtraction: 2, buildCost: { metal: 200, credits: 100 } },
-        { id: 2, name: "T2 Array", baseExtraction: 5, buildCost: { metal: 500, credits: 250 } },
-        { id: 3, name: "T3 Array", baseExtraction: 10, buildCost: { metal: 1000, credits: 500 } },
+        { id: 1, name: "T1 Array", baseExtraction: 2, buildCost: { metal: 200, gold: 100 } },
+        { id: 2, name: "T2 Array", baseExtraction: 5, buildCost: { metal: 500, gold: 250 } },
+        { id: 3, name: "T3 Array", baseExtraction: 10, buildCost: { metal: 1000, gold: 500 } },
       ].find(t => t.id === tier);
 
       if (!tierConfig) {
@@ -719,14 +719,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check resources
-      if (player.metal < tierConfig.buildCost.metal || player.credits < tierConfig.buildCost.credits) {
+      if (player.metal < tierConfig.buildCost.metal || player.gold < tierConfig.buildCost.gold) {
         return res.status(400).json({ message: "Insufficient resources" });
       }
 
       // Deduct resources
       await storage.updatePlayer(userId, {
         metal: player.metal - tierConfig.buildCost.metal,
-        credits: player.credits - tierConfig.buildCost.credits,
+        gold: player.gold - tierConfig.buildCost.gold,
       });
 
       // Create array
@@ -1045,7 +1045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             level: nextLevelConfig.level,
             metal: nextLevelConfig.metal,
             crystals: nextLevelConfig.crystals || 0,
-            credits: nextLevelConfig.credits,
+            gold: nextLevelConfig.gold,
           };
         }
       }

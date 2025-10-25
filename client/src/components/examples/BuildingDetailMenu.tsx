@@ -11,7 +11,7 @@ export default function BuildingDetailMenuExample() {
         onClose={() => console.log("Close")}
         onUpgrade={() => console.log("Upgrade")}
         canUpgrade={true}
-        upgradeCost={{ credits: 200, metal: 100 }}
+        upgradeCost={{ gold: 200, metal: 100 }}
         upgradeTime={10}
         currentProduction={5}
         maxStorage={100}

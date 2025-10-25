@@ -38,7 +38,7 @@ interface UnlockInfo {
     level: number;
     metal: number;
     crystals: number;
-    credits: number;
+    gold: number;
   } | null;
 }
 
@@ -174,7 +174,7 @@ export default function PowerManagement({ open, onOpenChange }: PowerManagementP
     return (
       player.metal >= cost.metal &&
       player.crystals >= cost.crystals &&
-      player.credits >= cost.credits
+      player.gold >= cost.gold
     );
   };
 
@@ -340,7 +340,7 @@ export default function PowerManagement({ open, onOpenChange }: PowerManagementP
                         </div>
                         <div className="flex items-center gap-1" data-testid="text-hub-upgrade-cost-credits">
                           <Coins className="w-4 h-4" />
-                          {unlockInfo.nextLevelCost.credits}
+                          {unlockInfo.nextLevelCost.gold}
                         </div>
                       </div>
                       <Button

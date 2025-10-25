@@ -38,8 +38,8 @@ export const players = pgTable("players", {
   id: varchar("id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   // Base resources
-  credits: integer("credits").notNull().default(100),
-  metal: integer("metal").notNull().default(50),
+  gold: integer("gold").notNull().default(1000),
+  metal: integer("metal").notNull().default(100),
   crystals: integer("crystals").notNull().default(0),
   exotic: integer("exotic").notNull().default(0), // Phase 6+ Planetary scanning
   energyCells: integer("energy_cells").notNull().default(0), // Phase 5+ Advanced power
@@ -141,9 +141,9 @@ export const DRONE_UPGRADE_CONFIG = {
   } as Record<number, number>,
   bonusPerLevel: 0.10,  // +10% per level
   baseCosts: {
-    speed: { metal: 50, credits: 20 },
-    cargo: { metal: 30, credits: 15 },
-    harvest: { metal: 40, credits: 18 },
+    speed: { metal: 50, gold: 20 },
+    cargo: { metal: 30, gold: 15 },
+    harvest: { metal: 40, gold: 18 },
   },
   costMultiplier: 1.5,  // Costs scale by 1.5x per level
   upgradeDuration: 30,  // 30 seconds per upgrade
@@ -163,9 +163,9 @@ export const RIFT_CONFIG = {
 
 // Extraction array tiers (Phase 4.2)
 export const ARRAY_TIERS = [
-  { id: 1, name: "T1 Array", baseExtraction: 2, buildCost: { metal: 200, credits: 100 }, buildTime: 30 },
-  { id: 2, name: "T2 Array", baseExtraction: 5, buildCost: { metal: 500, credits: 250 }, buildTime: 60 },
-  { id: 3, name: "T3 Array", baseExtraction: 10, buildCost: { metal: 1000, credits: 500 }, buildTime: 90 },
+  { id: 1, name: "T1 Array", baseExtraction: 2, buildCost: { metal: 200, gold: 100 }, buildTime: 30 },
+  { id: 2, name: "T2 Array", baseExtraction: 5, buildCost: { metal: 500, gold: 250 }, buildTime: 60 },
+  { id: 3, name: "T3 Array", baseExtraction: 10, buildCost: { metal: 1000, gold: 500 }, buildTime: 90 },
 ];
 
 // Array upgrade configuration (Phase 4.7)
@@ -177,9 +177,9 @@ export const ARRAY_UPGRADE_CONFIG = {
   } as Record<number, number>,
   bonusPerLevel: 0.10,  // +10% per level
   baseCosts: {
-    uplink: { metal: 100, credits: 50 }, // increases extraction rate
-    beam: { metal: 80, credits: 40 }, // reduces stability decay
-    telemetry: { metal: 60, credits: 30 }, // improves detection (future)
+    uplink: { metal: 100, gold: 50 }, // increases extraction rate
+    beam: { metal: 80, gold: 40 }, // reduces stability decay
+    telemetry: { metal: 60, gold: 30 }, // improves detection (future)
   },
   costMultiplier: 1.5,  // Costs scale by 1.5x per level
   upgradeDuration: 60,  // 60 seconds per upgrade
@@ -195,7 +195,7 @@ export const POWER_MODULE_TIERS = [
     tier: 1,
     name: "Solar Array",
     powerOutput: 5,
-    buildCost: { metal: 50, credits: 0 },
+    buildCost: { metal: 50, gold: 0 },
     requiredHubLevel: 2,
     buildTime: 30, // seconds
   },
@@ -237,15 +237,15 @@ export const POWER_MODULE_TIERS = [
 export const CENTRAL_HUB_CONFIG = {
   maxLevel: 10,
   upgradeCosts: [
-    { level: 2, metal: 100, credits: 50 },
-    { level: 3, metal: 250, credits: 100 },
-    { level: 4, metal: 500, crystals: 100, credits: 150 },
-    { level: 5, metal: 1000, crystals: 200, credits: 250 },
-    { level: 6, metal: 2000, crystals: 500, credits: 400 },
-    { level: 7, metal: 3500, crystals: 1000, credits: 600 },
-    { level: 8, metal: 6000, crystals: 2000, credits: 1000 },
-    { level: 9, metal: 10000, crystals: 4000, credits: 1500 },
-    { level: 10, metal: 15000, crystals: 6000, credits: 2500 },
+    { level: 2, metal: 100, gold: 50 },
+    { level: 3, metal: 250, gold: 100 },
+    { level: 4, metal: 500, crystals: 100, gold: 150 },
+    { level: 5, metal: 1000, crystals: 200, gold: 250 },
+    { level: 6, metal: 2000, crystals: 500, gold: 400 },
+    { level: 7, metal: 3500, crystals: 1000, gold: 600 },
+    { level: 8, metal: 6000, crystals: 2000, gold: 1000 },
+    { level: 9, metal: 10000, crystals: 4000, gold: 1500 },
+    { level: 10, metal: 15000, crystals: 6000, gold: 2500 },
   ],
   upgradeDurations: [
     { level: 2, seconds: 60 },
@@ -293,7 +293,7 @@ export interface ResearchTech {
   cost: {
     metal?: number;
     crystals?: number;
-    credits?: number;
+    gold?: number;
   };
   duration: number; // seconds
   prerequisites: string[]; // Array of research IDs
@@ -318,7 +318,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Mining Efficiency I",
     category: "mining",
     description: "+10% drone harvest rate",
-    cost: { metal: 100, credits: 50 },
+    cost: { metal: 100, gold: 50 },
     duration: 60,
     prerequisites: [],
     bonuses: { miningEfficiency: 0.10 },
@@ -328,7 +328,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Mining Efficiency II",
     category: "mining",
     description: "+10% drone harvest rate",
-    cost: { metal: 250, credits: 100 },
+    cost: { metal: 250, gold: 100 },
     duration: 120,
     prerequisites: ["MD-001"],
     bonuses: { miningEfficiency: 0.10 },
@@ -338,7 +338,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Cargo Expansion I",
     category: "mining",
     description: "+10% drone cargo capacity",
-    cost: { metal: 150, crystals: 30, credits: 75 },
+    cost: { metal: 150, crystals: 30, gold: 75 },
     duration: 90,
     prerequisites: [],
     bonuses: { cargoCapacity: 0.10 },
@@ -348,7 +348,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Cargo Expansion II",
     category: "mining",
     description: "+10% drone cargo capacity",
-    cost: { metal: 300, crystals: 80, credits: 150 },
+    cost: { metal: 300, crystals: 80, gold: 150 },
     duration: 150,
     prerequisites: ["MD-003"],
     bonuses: { cargoCapacity: 0.10 },
@@ -358,7 +358,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Drone Speed I",
     category: "mining",
     description: "+10% drone travel speed",
-    cost: { metal: 120, credits: 60 },
+    cost: { metal: 120, gold: 60 },
     duration: 75,
     prerequisites: [],
     bonuses: { droneSpeed: 0.10 },
@@ -372,7 +372,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Shield Technology I",
     category: "ship",
     description: "+10% ship shield capacity",
-    cost: { metal: 200, crystals: 100, credits: 100 },
+    cost: { metal: 200, crystals: 100, gold: 100 },
     duration: 120,
     prerequisites: [],
     bonuses: { shieldCapacity: 0.10 },
@@ -382,7 +382,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Weapon Systems I",
     category: "ship",
     description: "+10% weapon damage",
-    cost: { metal: 250, crystals: 150, credits: 125 },
+    cost: { metal: 250, crystals: 150, gold: 125 },
     duration: 150,
     prerequisites: [],
     bonuses: { weaponDamage: 0.10 },
@@ -392,7 +392,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Hull Reinforcement I",
     category: "ship",
     description: "+10% hull strength",
-    cost: { metal: 300, crystals: 100, credits: 150 },
+    cost: { metal: 300, crystals: 100, gold: 150 },
     duration: 180,
     prerequisites: [],
     bonuses: { hullStrength: 0.10 },
@@ -406,7 +406,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Research Speed I",
     category: "science_lab",
     description: "-10% research time",
-    cost: { metal: 150, crystals: 50, credits: 100 },
+    cost: { metal: 150, crystals: 50, gold: 100 },
     duration: 90,
     prerequisites: [],
     bonuses: { researchSpeed: 0.10 },
@@ -416,7 +416,7 @@ export const RESEARCH_TREE: ResearchTech[] = [
     name: "Resource Efficiency I",
     category: "science_lab",
     description: "-10% research costs",
-    cost: { metal: 200, crystals: 80, credits: 150 },
+    cost: { metal: 200, crystals: 80, gold: 150 },
     duration: 120,
     prerequisites: [],
     bonuses: { researchCost: 0.10 },
@@ -440,7 +440,7 @@ export interface ShipChassis {
   cost: {
     metal: number;
     crystals: number;
-    credits: number;
+    gold: number;
   };
   buildTime: number;
 }
@@ -451,7 +451,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Fighter",
     description: "Fast, agile ship with light armament",
     baseStats: { maxHull: 100, maxShields: 50, weaponDamage: 15, speed: 100 },
-    cost: { metal: 150, crystals: 50, credits: 100 },
+    cost: { metal: 150, crystals: 50, gold: 100 },
     buildTime: 60,
   },
   {
@@ -459,7 +459,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Interceptor",
     description: "Ultra-fast scout with minimal defenses",
     baseStats: { maxHull: 80, maxShields: 30, weaponDamage: 10, speed: 150 },
-    cost: { metal: 100, crystals: 30, credits: 75 },
+    cost: { metal: 100, crystals: 30, gold: 75 },
     buildTime: 45,
   },
   {
@@ -467,7 +467,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Bomber",
     description: "Heavy weapons platform with weak defenses",
     baseStats: { maxHull: 120, maxShields: 40, weaponDamage: 40, speed: 60 },
-    cost: { metal: 250, crystals: 100, credits: 150 },
+    cost: { metal: 250, crystals: 100, gold: 150 },
     buildTime: 90,
   },
   {
@@ -475,7 +475,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Corvette",
     description: "Balanced light warship",
     baseStats: { maxHull: 200, maxShields: 100, weaponDamage: 20, speed: 80 },
-    cost: { metal: 300, crystals: 150, credits: 200 },
+    cost: { metal: 300, crystals: 150, gold: 200 },
     buildTime: 120,
   },
   {
@@ -483,7 +483,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Frigate",
     description: "Medium warship with strong firepower",
     baseStats: { maxHull: 350, maxShields: 150, weaponDamage: 35, speed: 70 },
-    cost: { metal: 500, crystals: 250, credits: 350 },
+    cost: { metal: 500, crystals: 250, gold: 350 },
     buildTime: 180,
   },
   {
@@ -491,7 +491,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Destroyer",
     description: "Heavy warship with powerful weapons",
     baseStats: { maxHull: 500, maxShields: 250, weaponDamage: 50, speed: 50 },
-    cost: { metal: 800, crystals: 400, credits: 600 },
+    cost: { metal: 800, crystals: 400, gold: 600 },
     buildTime: 240,
   },
   {
@@ -499,7 +499,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Cruiser",
     description: "Capital ship with massive firepower",
     baseStats: { maxHull: 800, maxShields: 400, weaponDamage: 70, speed: 40 },
-    cost: { metal: 1200, crystals: 600, credits: 900 },
+    cost: { metal: 1200, crystals: 600, gold: 900 },
     buildTime: 360,
   },
   {
@@ -507,7 +507,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Battleship",
     description: "Massive dreadnought with devastating weapons",
     baseStats: { maxHull: 1500, maxShields: 800, weaponDamage: 100, speed: 30 },
-    cost: { metal: 2000, crystals: 1000, credits: 1500 },
+    cost: { metal: 2000, crystals: 1000, gold: 1500 },
     buildTime: 600,
   },
   {
@@ -515,7 +515,7 @@ export const SHIP_CHASSIS: ShipChassis[] = [
     name: "Support Ship",
     description: "Defensive vessel with strong shields",
     baseStats: { maxHull: 300, maxShields: 300, weaponDamage: 15, speed: 60 },
-    cost: { metal: 400, crystals: 200, credits: 300 },
+    cost: { metal: 400, crystals: 200, gold: 300 },
     buildTime: 150,
   },
 ];
@@ -728,7 +728,7 @@ export const battles = pgTable("battles", {
   playerFleet: jsonb("player_fleet").notNull(), // Array of ship IDs
   enemyFleet: jsonb("enemy_fleet").notNull(), // Array of enemy ship configs
   battleLog: jsonb("battle_log"), // Array of turn events
-  rewards: jsonb("rewards"), // { metal, crystals, credits }
+  rewards: jsonb("rewards"), // { metal, crystals, gold }
   startedAt: timestamp("started_at").defaultNow().notNull(),
   completedAt: timestamp("completed_at"),
 }, (table) => [
@@ -794,7 +794,7 @@ export interface EquipmentCatalogItem {
   bonusHull?: number;
   bonusShields?: number;
   bonusDamage?: number;
-  cost: { metal: number; crystals: number; credits: number };
+  cost: { metal: number; crystals: number; gold: number };
 }
 
 export const EQUIPMENT_CATALOG: EquipmentCatalogItem[] = [
@@ -803,28 +803,28 @@ export const EQUIPMENT_CATALOG: EquipmentCatalogItem[] = [
     name: "Plasma Cannon",
     type: "weapon",
     bonusDamage: 20,
-    cost: { metal: 300, crystals: 150, credits: 200 },
+    cost: { metal: 300, crystals: 150, gold: 200 },
   },
   {
     id: "laser_array",
     name: "Laser Array",
     type: "weapon",
     bonusDamage: 35,
-    cost: { metal: 600, crystals: 300, credits: 400 },
+    cost: { metal: 600, crystals: 300, gold: 400 },
   },
   {
     id: "shield_amplifier",
     name: "Shield Amplifier",
     type: "shield_booster",
     bonusShields: 100,
-    cost: { metal: 400, crystals: 200, credits: 300 },
+    cost: { metal: 400, crystals: 200, gold: 300 },
   },
   {
     id: "reinforced_plating",
     name: "Reinforced Hull Plating",
     type: "hull_plating",
     bonusHull: 150,
-    cost: { metal: 500, crystals: 100, credits: 250 },
+    cost: { metal: 500, crystals: 100, gold: 250 },
   },
 ];
 
@@ -840,7 +840,7 @@ export interface BossEncounter {
     maxShields: number;
     weaponDamage: number;
   }>;
-  rewards: { metal: number; crystals: number; credits: number };
+  rewards: { metal: number; crystals: number; gold: number };
 }
 
 export const BOSS_ENCOUNTERS: BossEncounter[] = [
@@ -854,7 +854,7 @@ export const BOSS_ENCOUNTERS: BossEncounter[] = [
       { chassisId: "cruiser", maxHull: 1200, maxShields: 600, weaponDamage: 90 },
       { chassisId: "destroyer", maxHull: 800, maxShields: 400, weaponDamage: 70 },
     ],
-    rewards: { metal: 2000, crystals: 1000, credits: 1500 },
+    rewards: { metal: 2000, crystals: 1000, gold: 1500 },
   },
   {
     id: "alien_armada",
@@ -866,7 +866,7 @@ export const BOSS_ENCOUNTERS: BossEncounter[] = [
       { chassisId: "battleship", maxHull: 3000, maxShields: 1500, weaponDamage: 150 },
       { chassisId: "cruiser", maxHull: 1500, maxShields: 750, weaponDamage: 100 },
     ],
-    rewards: { metal: 5000, crystals: 2500, credits: 3000 },
+    rewards: { metal: 5000, crystals: 2500, gold: 3000 },
   },
 ];
 
@@ -907,7 +907,7 @@ export const insertBuildingSchema = createInsertSchema(buildings).omit({
 export const updatePlayerSchema = z.object({
   id: z.string(),
   name: z.string().optional(),
-  credits: z.number().optional(),
+  gold: z.number().optional(),
   metal: z.number().optional(),
   crystals: z.number().optional(),
   exotic: z.number().optional(),
@@ -1006,7 +1006,7 @@ export const researchTechSchema = z.object({
   cost: z.object({
     metal: z.number().min(0).optional(),
     crystals: z.number().min(0).optional(),
-    credits: z.number().min(0).optional(),
+    gold: z.number().min(0).optional(),
   }),
   duration: z.number().min(1),
   prerequisites: z.array(z.string()),

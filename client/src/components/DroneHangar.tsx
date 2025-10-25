@@ -92,9 +92,9 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
   });
 
   const droneCosts = {
-    1: { credits: 100, metal: 50, crystals: 0 },
-    2: { credits: 300, metal: 150, crystals: 25 },
-    3: { credits: 600, metal: 300, crystals: 75 },
+    1: { gold: 100, metal: 50, crystals: 0 },
+    2: { gold: 300, metal: 150, crystals: 25 },
+    3: { gold: 600, metal: 300, crystals: 75 },
   };
 
   const droneStats = {
@@ -123,7 +123,7 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
   const cost = droneCosts[tier];
   const stats = droneStats[tier];
   const canAfford = player ? (
-    player.credits >= cost.credits && 
+    player.gold >= cost.gold && 
     player.metal >= cost.metal && 
     player.crystals >= cost.crystals
   ) : false;
@@ -164,7 +164,7 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
     const multiplier = Math.pow(DRONE_UPGRADE_CONFIG.costMultiplier, currentLevel);
     return {
       metal: Math.floor(baseCost.metal * multiplier),
-      credits: Math.floor(baseCost.credits * multiplier),
+      gold: Math.floor(baseCost.gold * multiplier),
     };
   };
 
@@ -272,7 +272,7 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
                           <div className="flex flex-wrap gap-2">
                             <div className="flex items-center gap-1 text-sm">
                               <Coins className="w-3 h-3 text-accent" />
-                              <span>{cost.credits}</span>
+                              <span>{cost.gold}</span>
                             </div>
                             <div className="flex items-center gap-1 text-sm">
                               <Wrench className="w-3 h-3 text-secondary" />
@@ -410,7 +410,7 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
                           {upgradeTypes.map(({ type, icon: Icon, label, levelKey }) => {
                             const currentLevel = (drone[levelKey] as number) || 0;
                             const cost = calculateUpgradeCost(type, currentLevel);
-                            const canAfford = player ? (player.metal >= cost.metal && player.credits >= cost.credits) : false;
+                            const canAfford = player ? (player.metal >= cost.metal && player.gold >= cost.gold) : false;
                             const isMaxed = currentLevel >= maxLevel;
                             const canUpgrade = !isMaxed && drone.status === 'idle' && !drone.upgradingType && canAfford;
                             
@@ -427,7 +427,7 @@ export default function DroneHangar({ open, onOpenChange }: DroneHangarProps) {
                                   <Wrench className="w-3 h-3" />
                                   {cost.metal}
                                   <Coins className="w-3 h-3 ml-1" />
-                                  {cost.credits}
+                                  {cost.gold}
                                 </div>
                                 <Button
                                   size="sm"

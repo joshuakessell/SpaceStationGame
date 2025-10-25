@@ -36,7 +36,7 @@ export default function BuildMenu({
   playerCrystals,
 }: BuildMenuProps) {
   const canAfford = (option: BuildOption) => {
-    const hasCredits = !option.cost.credits || playerCredits >= option.cost.credits;
+    const hasCredits = !option.cost.gold || playerCredits >= option.cost.gold;
     const hasMetal = !option.cost.metal || playerMetal >= option.cost.metal;
     const hasCrystals = !option.cost.crystals || playerCrystals >= option.cost.crystals;
     return hasCredits && hasMetal && hasCrystals && option.available;
@@ -87,10 +87,10 @@ export default function BuildMenu({
 
                 <CardContent className="pt-0">
                   <div className="flex flex-wrap items-center gap-3 text-sm">
-                    {option.cost.credits !== undefined && (
-                      <div className={`flex items-center gap-1 ${playerCredits < option.cost.credits ? "text-destructive" : ""}`}>
+                    {option.cost.gold !== undefined && (
+                      <div className={`flex items-center gap-1 ${playerCredits < option.cost.gold ? "text-destructive" : ""}`}>
                         <Coins className="w-4 h-4" />
-                        <span className="font-semibold">{option.cost.credits}</span>
+                        <span className="font-semibold">{option.cost.gold}</span>
                       </div>
                     )}
                     {option.cost.metal !== undefined && (

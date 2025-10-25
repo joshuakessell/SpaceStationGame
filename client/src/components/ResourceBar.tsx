@@ -1,7 +1,7 @@
 import { Coins, Wrench, Gem } from "lucide-react";
 
 interface ResourceBarProps {
-  credits: number;
+  gold: number;
   metal: number;
   crystals: number;
 }

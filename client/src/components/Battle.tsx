@@ -77,7 +77,7 @@ export function BattleArena() {
               <div key={mission.id} className="border border-border rounded-md p-3 space-y-2">
                 <div className="font-semibold">{boss.name}</div>
                 <div className="text-sm text-muted-foreground">{boss.description}</div>
-                <div className="text-sm">Rewards: 🔧{boss.rewards.metal} 💎{boss.rewards.crystals} 💰{boss.rewards.credits}</div>
+                <div className="text-sm">Rewards: 🔧{boss.rewards.metal} 💎{boss.rewards.crystals} 💰{boss.rewards.gold}</div>
                 <Button 
                   onClick={() => startMissionMutation.mutate(mission.missionId)}
                   disabled={startMissionMutation.isPending || mission.status === "completed"}
@@ -146,7 +146,7 @@ export function BattleArena() {
                 </div>
                 {battle.status === "victory" && (
                   <div className="text-sm">
-                    Rewards: 🔧{rewards.metal} 💎{rewards.crystals} 💰{rewards.credits}
+                    Rewards: 🔧{rewards.metal} 💎{rewards.crystals} 💰{rewards.gold}
                   </div>
                 )}
                 <details className="text-sm">

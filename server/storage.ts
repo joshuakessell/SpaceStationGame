@@ -350,7 +350,7 @@ export class DatabaseStorage implements IStorage {
       const multiplier = Math.pow(DRONE_UPGRADE_CONFIG.costMultiplier, currentLevel);
       const cost = {
         metal: Math.floor(baseCost.metal * multiplier),
-        credits: Math.floor(baseCost.credits * multiplier),
+        gold: Math.floor(baseCost.gold * multiplier),
       };
 
       // Get player and check resources
@@ -363,8 +363,8 @@ export class DatabaseStorage implements IStorage {
         throw new Error('Player not found');
       }
 
-      if (player.metal < cost.metal || player.credits < cost.credits) {
-        throw new Error(`Insufficient resources. Need ${cost.metal} metal and ${cost.credits} credits`);
+      if (player.metal < cost.metal || player.gold < cost.gold) {
+        throw new Error(`Insufficient resources. Need ${cost.metal} metal and ${cost.gold} credits`);
       }
 
       // Deduct resources
@@ -372,7 +372,7 @@ export class DatabaseStorage implements IStorage {
         .update(players)
         .set({
           metal: player.metal - cost.metal,
-          credits: player.credits - cost.credits,
+          gold: player.gold - cost.gold,
           lastUpdatedAt: new Date(),
         })
         .where(eq(players.id, drone.playerId));
@@ -627,7 +627,7 @@ export class DatabaseStorage implements IStorage {
       const baseCost = ARRAY_UPGRADE_CONFIG.baseCosts[upgradeType];
       const costMultiplier = Math.pow(ARRAY_UPGRADE_CONFIG.costMultiplier, currentLevel);
       const metalCost = Math.round(baseCost.metal * costMultiplier);
-      const creditsCost = Math.round(baseCost.credits * costMultiplier);
+      const creditsCost = Math.round(baseCost.gold * costMultiplier);
 
       // Get player
       const [player] = await tx
@@ -640,7 +640,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Check resources
-      if (player.metal < metalCost || player.credits < creditsCost) {
+      if (player.metal < metalCost || player.gold < creditsCost) {
         throw new Error('Insufficient resources');
       }
 
@@ -649,7 +649,7 @@ export class DatabaseStorage implements IStorage {
         .update(players)
         .set({
           metal: player.metal - metalCost,
-          credits: player.credits - creditsCost,
+          gold: player.gold - creditsCost,
           lastUpdatedAt: new Date(),
         })
         .where(eq(players.id, array.playerId));
@@ -744,14 +744,14 @@ export class DatabaseStorage implements IStorage {
       }
 
       const requiredMetal = upgradeCostConfig.metal || 0;
-      const requiredCredits = upgradeCostConfig.credits || 0;
+      const requiredCredits = upgradeCostConfig.gold || 0;
       const requiredCrystals = upgradeCostConfig.crystals || 0;
 
       if (player.metal < requiredMetal) {
         throw new Error(`Insufficient metal. Required: ${requiredMetal}, Available: ${player.metal}`);
       }
-      if (player.credits < requiredCredits) {
-        throw new Error(`Insufficient credits. Required: ${requiredCredits}, Available: ${player.credits}`);
+      if (player.gold < requiredCredits) {
+        throw new Error(`Insufficient credits. Required: ${requiredCredits}, Available: ${player.gold}`);
       }
       if (player.crystals < requiredCrystals) {
         throw new Error(`Insufficient crystals. Required: ${requiredCrystals}, Available: ${player.crystals}`);
@@ -762,7 +762,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           hubLevel: targetLevel,
           metal: player.metal - requiredMetal,
-          credits: player.credits - requiredCredits,
+          gold: player.gold - requiredCredits,
           crystals: player.crystals - requiredCrystals,
           lastUpdatedAt: new Date(),
         })
@@ -963,7 +963,7 @@ export class DatabaseStorage implements IStorage {
       const effectiveCost = {
         metal: Math.ceil((baseCost.metal || 0) * bonuses.researchCost),
         crystals: Math.ceil((baseCost.crystals || 0) * bonuses.researchCost),
-        credits: Math.ceil((baseCost.credits || 0) * bonuses.researchCost),
+        gold: Math.ceil((baseCost.gold || 0) * bonuses.researchCost),
       };
       
       const effectiveDuration = Math.ceil(tech.duration * bonuses.researchSpeed);
@@ -980,7 +980,7 @@ export class DatabaseStorage implements IStorage {
       if (effectiveCost.crystals && player.crystals < effectiveCost.crystals) {
         throw new Error("Insufficient crystals");
       }
-      if (effectiveCost.credits && player.credits < effectiveCost.credits) {
+      if (effectiveCost.gold && player.gold < effectiveCost.gold) {
         throw new Error("Insufficient credits");
       }
       
@@ -990,7 +990,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           metal: player.metal - (effectiveCost.metal || 0),
           crystals: player.crystals - (effectiveCost.crystals || 0),
-          credits: player.credits - (effectiveCost.credits || 0),
+          gold: player.gold - (effectiveCost.gold || 0),
         })
         .where(eq(players.id, playerId));
       
@@ -1130,7 +1130,7 @@ export class DatabaseStorage implements IStorage {
       
       if (player.metal < cost.metal) throw new Error("Insufficient metal");
       if (player.crystals < cost.crystals) throw new Error("Insufficient crystals");
-      if (player.credits < cost.credits) throw new Error("Insufficient credits");
+      if (player.gold < cost.gold) throw new Error("Insufficient credits");
       
       // 4. Deduct resources
       await tx
@@ -1138,7 +1138,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           metal: sql`${players.metal} - ${cost.metal}`,
           crystals: sql`${players.crystals} - ${cost.crystals}`,
-          credits: sql`${players.credits} - ${cost.credits}`,
+          gold: sql`${players.gold} - ${cost.gold}`,
         })
         .where(eq(players.id, playerId));
       
@@ -1290,12 +1290,12 @@ export class DatabaseStorage implements IStorage {
       const result = simulateBattle(fleet.offense, enemyFleet, bonuses);
       
       const baseRewards = {
-        easy: { metal: 200, crystals: 50, credits: 100 },
-        medium: { metal: 400, crystals: 100, credits: 200 },
-        hard: { metal: 800, crystals: 200, credits: 400 },
+        easy: { metal: 200, crystals: 50, gold: 100 },
+        medium: { metal: 400, crystals: 100, gold: 200 },
+        hard: { metal: 800, crystals: 200, gold: 400 },
       };
       
-      const rewards = result.victory ? baseRewards[difficulty] : { metal: 0, crystals: 0, credits: 0 };
+      const rewards = result.victory ? baseRewards[difficulty] : { metal: 0, crystals: 0, gold: 0 };
       
       const [battle] = await tx
         .insert(battles)
@@ -1322,7 +1322,7 @@ export class DatabaseStorage implements IStorage {
           .set({
             metal: sql`${players.metal} + ${rewards.metal}`,
             crystals: sql`${players.crystals} + ${rewards.crystals}`,
-            credits: sql`${players.credits} + ${rewards.credits}`,
+            gold: sql`${players.gold} + ${rewards.gold}`,
           })
           .where(eq(players.id, playerId));
       }
@@ -1345,7 +1345,7 @@ export class DatabaseStorage implements IStorage {
 
       if (player.metal < catalogItem.cost.metal ||
           player.crystals < catalogItem.cost.crystals ||
-          player.credits < catalogItem.cost.credits) {
+          player.gold < catalogItem.cost.gold) {
         throw new Error('Insufficient resources');
       }
 
@@ -1354,7 +1354,7 @@ export class DatabaseStorage implements IStorage {
         .set({
           metal: player.metal - catalogItem.cost.metal,
           crystals: player.crystals - catalogItem.cost.crystals,
-          credits: player.credits - catalogItem.cost.credits,
+          gold: player.gold - catalogItem.cost.gold,
         })
         .where(eq(players.id, playerId));
 
@@ -1450,7 +1450,7 @@ export class DatabaseStorage implements IStorage {
       const bonuses = await this.getPlayerResearchBonuses(playerId);
       const result = simulateBattle(fleet.offense, bossEncounter.fleet, bonuses);
 
-      const rewards = result.victory ? bossEncounter.rewards : { metal: 0, crystals: 0, credits: 0 };
+      const rewards = result.victory ? bossEncounter.rewards : { metal: 0, crystals: 0, gold: 0 };
 
       const [battle] = await tx
         .insert(battles)
@@ -1488,7 +1488,7 @@ export class DatabaseStorage implements IStorage {
           .set({
             metal: sql`${players.metal} + ${rewards.metal}`,
             crystals: sql`${players.crystals} + ${rewards.crystals}`,
-            credits: sql`${players.credits} + ${rewards.credits}`,
+            gold: sql`${players.gold} + ${rewards.gold}`,
           })
           .where(eq(players.id, playerId));
       }

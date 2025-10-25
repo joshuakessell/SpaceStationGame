@@ -20,16 +20,16 @@ import { useToast } from "@/hooks/use-toast";
 import type { Player, Building, ExtractionArray, ResourceNode } from "@shared/schema";
 
 const ARRAY_TIERS = [
-  { id: 1, name: "Mk1 Array", baseExtraction: 2, buildCost: { metal: 200, credits: 100 } },
-  { id: 2, name: "Mk2 Array", baseExtraction: 5, buildCost: { metal: 500, credits: 250 } },
-  { id: 3, name: "Mk3 Array", baseExtraction: 10, buildCost: { metal: 1000, credits: 500 } },
+  { id: 1, name: "Mk1 Array", baseExtraction: 2, buildCost: { metal: 200, gold: 100 } },
+  { id: 2, name: "Mk2 Array", baseExtraction: 5, buildCost: { metal: 500, gold: 250 } },
+  { id: 3, name: "Mk3 Array", baseExtraction: 10, buildCost: { metal: 1000, gold: 500 } },
 ];
 
 const UPGRADE_CONFIG = {
   baseCosts: {
-    uplink: { metal: 100, credits: 50 },
-    beam: { metal: 80, credits: 40 },
-    telemetry: { metal: 60, credits: 30 },
+    uplink: { metal: 100, gold: 50 },
+    beam: { metal: 80, gold: 40 },
+    telemetry: { metal: 60, gold: 30 },
   },
   costMultiplier: 1.5,
   upgradeDuration: 60,
@@ -203,7 +203,7 @@ export function ArrayBay() {
                           <Badge variant="outline">{tier.baseExtraction} ⚡/tick</Badge>
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Cost: {tier.buildCost.metal} Metal, {tier.buildCost.credits} Credits
+                          Cost: {tier.buildCost.metal} Metal, {tier.buildCost.gold} Credits
                         </div>
                       </Label>
                     </div>
@@ -211,7 +211,7 @@ export function ArrayBay() {
                 </RadioGroup>
                 <Button
                   onClick={() => buildMutation.mutate(selectedTier)}
-                  disabled={buildMutation.isPending || (player && (player.metal < selectedTierConfig.buildCost.metal || player.credits < selectedTierConfig.buildCost.credits))}
+                  disabled={buildMutation.isPending || (player && (player.metal < selectedTierConfig.buildCost.metal || player.gold < selectedTierConfig.buildCost.gold))}
                   className="w-full"
                   data-testid="button-confirm-build"
                 >

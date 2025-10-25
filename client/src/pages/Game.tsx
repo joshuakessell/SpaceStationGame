@@ -179,13 +179,13 @@ export default function Game() {
     } else if (tutorialStep === "command_building") {
       await updatePlayerMutation.mutateAsync({ 
         tutorialStep: "build_mine",
-        credits: player.credits + 100,
+        gold: player.gold + 100,
         metal: player.metal + 50,
       });
     } else if (tutorialStep === "mine_building") {
       await updatePlayerMutation.mutateAsync({ 
         tutorialStep: "build_crystal",
-        credits: player.credits + 150,
+        gold: player.gold + 150,
         metal: player.metal + 75,
       });
     } else if (tutorialStep === "crystal_building") {
@@ -268,7 +268,7 @@ export default function Game() {
     try {
       // Deduct costs
       await updatePlayerMutation.mutateAsync({
-        credits: player.credits - (placementMode.cost.credits || 0),
+        gold: player.gold - (placementMode.cost.gold || 0),
         metal: player.metal - (placementMode.cost.metal || 0),
         crystals: player.crystals - (placementMode.cost.crystals || 0),
       });
@@ -342,7 +342,7 @@ export default function Game() {
         name: "Command Center",
         icon: "🏢",
         description: "The nerve center of your station. Required for all operations.",
-        cost: { credits: 50, metal: 25, crystals: 0 },
+        cost: { gold: 50, metal: 25, crystals: 0 },
         buildTime: 5,
         available: !buildings.some((b) => b.buildingType === "command"),
       },
@@ -351,7 +351,7 @@ export default function Game() {
         name: "Ore Mine",
         icon: "⛏️",
         description: "Extracts metal from nearby asteroids automatically.",
-        cost: { credits: 100, metal: 50, crystals: 0 },
+        cost: { gold: 100, metal: 50, crystals: 0 },
         buildTime: 8,
         available: hasCommand && !buildings.some((b) => b.buildingType === "mine"),
         reason: !hasCommand ? "Requires Command Center" : undefined,
@@ -361,7 +361,7 @@ export default function Game() {
         name: "Scanner Array",
         icon: "📡",
         description: "Scans for asteroid clusters containing iron. Access the Star Map to discover mining opportunities.",
-        cost: { credits: 200, metal: 100, crystals: 0 },
+        cost: { gold: 200, metal: 100, crystals: 0 },
         buildTime: 12,
         available: hasCommand && !buildings.some((b) => b.buildingType === "scanner"),
         reason: !hasCommand ? "Requires Command Center" : undefined,
@@ -371,7 +371,7 @@ export default function Game() {
         name: "Crystal Synthesizer",
         icon: "💎",
         description: "Generates rare crystals for advanced research.",
-        cost: { credits: 150, metal: 75, crystals: 0 },
+        cost: { gold: 150, metal: 75, crystals: 0 },
         buildTime: 10,
         available: hasMine && !buildings.some((b) => b.buildingType === "crystal"),
         reason: !hasMine ? "Requires Ore Mine" : undefined,
@@ -381,7 +381,7 @@ export default function Game() {
         name: "Rift Scanner",
         icon: "🌀",
         description: "Detects unstable dimensional rifts rich in crystalline energy. Advanced technology for discovering rifts.",
-        cost: { credits: 300, metal: 150, crystals: 50 },
+        cost: { gold: 300, metal: 150, crystals: 50 },
         buildTime: 15,
         available: hasScanner && !buildings.some((b) => b.buildingType === "rift_scanner"),
         reason: !hasScanner ? "Requires Scanner Array" : undefined,
@@ -391,7 +391,7 @@ export default function Game() {
         name: "Array Bay",
         icon: "🛸",
         description: "Construct and deploy extraction arrays to siphon crystals from dimensional rifts continuously.",
-        cost: { credits: 400, metal: 200, crystals: 75 },
+        cost: { gold: 400, metal: 200, crystals: 75 },
         buildTime: 18,
         available: hasDroneHangar && !buildings.some((b) => b.buildingType === "array_bay"),
         reason: !hasDroneHangar ? "Requires Drone Hangar" : undefined,
@@ -470,7 +470,7 @@ export default function Game() {
             <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-md border border-border">
               <span className="text-xl">💰</span>
               <span className="font-orbitron font-semibold text-sm tabular-nums" data-testid="text-credits">
-                {Math.floor(player.credits)}
+                {Math.floor(player.gold)}
               </span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-background rounded-md border border-border">
@@ -546,7 +546,7 @@ export default function Game() {
           options={getBuildOptions()}
           onBuild={handleBuild}
           onClose={() => setShowBuildMenu(false)}
-          playerCredits={player.credits}
+          playerCredits={player.gold}
           playerMetal={player.metal}
           playerCrystals={player.crystals}
         />

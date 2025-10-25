@@ -158,7 +158,7 @@ export function ResearchBay() {
                   <div className="flex gap-4 text-sm">
                     {tech.cost.metal && <span>🔧 Metal: {tech.cost.metal}</span>}
                     {tech.cost.crystals && <span>💎 Crystals: {tech.cost.crystals}</span>}
-                    {tech.cost.credits && <span>💰 Credits: {tech.cost.credits}</span>}
+                    {tech.cost.gold && <span>💰 Credits: {tech.cost.gold}</span>}
                     <span>⏱️ Duration: {tech.duration}s</span>
                   </div>
                   {tech.prerequisites.length > 0 && (

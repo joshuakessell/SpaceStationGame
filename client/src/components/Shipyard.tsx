@@ -94,7 +94,7 @@ export function Shipyard() {
                 {eq.bonusShields && eq.bonusShields > 0 && `+${eq.bonusShields} Shields `}
                 {eq.bonusHull && eq.bonusHull > 0 && `+${eq.bonusHull} Hull`}
               </div>
-              <div className="text-sm">Cost: 🔧{eq.cost.metal} 💎{eq.cost.crystals} 💰{eq.cost.credits}</div>
+              <div className="text-sm">Cost: 🔧{eq.cost.metal} 💎{eq.cost.crystals} 💰{eq.cost.gold}</div>
               <Button 
                 size="sm" 
                 onClick={() => craftMutation.mutate(eq.id)} 
@@ -122,7 +122,7 @@ export function Shipyard() {
                 Damage: {chassis.baseStats.weaponDamage} | Speed: {chassis.baseStats.speed}
               </div>
               <div className="text-sm">
-                Cost: 🔧{chassis.cost.metal} 💎{chassis.cost.crystals} 💰{chassis.cost.credits}
+                Cost: 🔧{chassis.cost.metal} 💎{chassis.cost.crystals} 💰{chassis.cost.gold}
               </div>
               <Button
                 onClick={() => buildMutation.mutate(chassis.id)}
