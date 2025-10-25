@@ -1,0 +1,324 @@
+Space Colony Module Guide and Tutorial Walkthrough
+Game Overview
+
+In this space colony simulation game, players build and upgrade modules (buildings) on their base to gather resources, craft units, and unlock new technologies. The game starts simple and gradually introduces more complexity and resources. Key resources include Gold, Metal, and Crystal, with even rarer Exotic Items needed for advanced upgrades. A central rule is that the Command Center (your base’s HQ) limits all other module levels – no module can exceed the Command Center’s level
+riseofkingdoms.fandom.com
+. This ensures a balanced progression: you must upgrade your Command Center to unlock higher levels of other structures. As the game progresses, build times and costs increase, but there are always activities (like exploration or resource gathering) to engage in while waiting for long upgrades. This guide compiles all modules, their purposes, upgrade costs, and unlock requirements, and then provides a detailed tutorial walkthrough for new players to follow in their first playthrough.
+
+Resources and Items
+
+Gold: A universal currency used for most construction and unit training. Gold represents trade value or credits. It is obtained from completing missions or as a small continual income from your Command Center’s operations. Early on, you start with a stash of Gold to fund initial buildings. (In later updates, a Trading Post or economic module could generate Gold income.) Gold is required in almost every build/upgrade, but it’s typically not the limiting resource in mid-game compared to others.
+
+Metal: A basic construction material harvested from asteroid mining. Metal is abundant and is needed for almost all structures, units, and upgrades. It is the first resource you will actively gather. You will use Metal heavily for building early modules and upgrading them. Mining Drones are used to extract Metal from nearby asteroid clusters.
+
+Crystal: An advanced resource used for high-tech buildings and units. Crystals become available a bit later in the game once you’ve established basic infrastructure. They are required for advanced buildings and research
+ogame.life
+ – for example, the Robotics Factory and certain upgrades need Crystals. Crystals are rarer than Metal and require improved mining capabilities or new modules to gather efficiently.
+
+Exotic Items: A category of special resources or components needed for top-tier modules, powerful units (like advanced robots or starships), and certain upgrades. These might be alien artifacts, advanced electronics, or rare elements that cannot be produced by your base’s standard facilities. Instead, they must be found through exploration missions or obtained via special events. In the early game, Exotic Items are introduced when you try to build your first attack robots (which require a component you don’t have). Players can obtain them passively by deploying special explorer drones (for “idle” collection over time). (Active missions to gather exotic items will be introduced in a future update, but for now an automated drone can handle it.)
+
+Base Modules and Structures
+
+Below is a list of all base modules (buildings) currently in the game’s first phase, their purpose, and their upgrade progression. Each module is introduced in the tutorial at the appropriate time. Remember, the Command Center must be upgraded to unlock higher levels of other buildings
+riseofkingdoms.fandom.com
+, so part of your strategy will be keeping the Command Center growth on pace with your other upgrades.
+
+Command Center (CC)
+
+Purpose: The Command Center is the heart of your base. It controls the maximum level of all other modules (no building can exceed the CC’s level)
+riseofkingdoms.fandom.com
+ and often unlocks new module types when upgraded. It also provides basic resource storage and might generate a small trickle of Gold (representing your colony’s administration and trade). Upgrading the Command Center increases your base’s capacity and allows further expansion.
+
+Levels & Unlocks:
+
+Level 1: This is your starting base. At CC Level 1, you can build basic structures such as the Drone Factory and resource storage modules. Storage Capacity: ~500 Metal (and a small amount of Crystal storage, e.g. 100, even though Crystal isn’t accessible yet). Starting Resources: Upon beginning, the Command Center provides a starting cache (e.g. 1000 Gold and 100 Metal) to kickstart construction.
+
+Level 2: Unlocks access to Crystal mining capabilities (the player will now be able to find and mine Crystals, either by discovering a new asteroid cluster or building a scanning module). Also allows building a Crystal Silo (for crystal storage) if not already available. Upgrade Cost to CC2: ~600 Metal + 200 Gold. (This cost slightly exceeds the initial Metal storage, prompting the player to expand storage before upgrading.) Build time is short (a minute or two) to keep early progression quick.
+
+Level 3: Unlocks the Robotics Factory (to build Attack Robots). Also allows further base expansion and possibly a Sensor Array or other advanced modules. Upgrade Cost to CC3: ~1000 Metal + 200 Crystal + 500 Gold. (Crystals are now required, reflecting the need for higher-tech materials for a larger base
+ogame.life
+.) The build time is longer (several minutes).
+
+Level 4: Unlocks the Expedition Center (for exploration and obtaining Exotic Items) and may unlock a Research Lab or Shipyard module for future development. Upgrade Cost to CC4: ~5000 Metal + 1000 Crystal + 1000 Gold (a significant jump, requiring the player to have multiple mining operations and storage upgrades by now). At this stage, you might also require 1 unit of an Exotic Item (for example, an AI Core) to upgrade to CC4 – this makes CC4 a milestone that forces the player to engage in exploration content to gather that exotic component. (If the design prefers not to gate CC4 behind an exotic, this can be adjusted to use only main resources.) Build time is substantial (perhaps an hour or more, as complexity increases).
+
+Level 5: (Future content) Could unlock Hangar/Shipyard for building starships and other late-game structures. Upgrade Cost to CC5: on the order of tens of thousands of Metal, several thousand Crystals, and multiple Exotic Items. This level of Command Center truly moves the colony into a high-tech era, enabling interstellar capabilities. (The specifics of CC5 and beyond are beyond the initial game scope, but it’s planned that progression continues similarly with new modules and resource requirements.)
+
+Drone Factory
+
+Purpose: The Drone Factory is where you construct drones – unmanned craft that perform various tasks. Initially, it produces Mining Drones for resource extraction. Upgrading the Drone Factory can improve drone construction speed, unlock new drone types, or increase the number of drones you can maintain. It’s one of the first modules you build to jump-start resource production.
+
+Unlock Requirements: Unlocked at Command Center Level 1 (starting tech). You can build this immediately at the beginning of the game.
+
+Levels & Details:
+
+Level 1: Allows building basic Mining Drones. Cost: ~50 Metal + 200 Gold. Build time is very short (a few seconds) to get you started. Once built, you can spend resources to create Mining Drones. Mining Drones (Mk I) cost ~50 Metal + 50 Gold each and are the workhorses that gather Metal from asteroids. At DF L1, you might be limited to producing Mining Drones only, and construction of each drone takes a small amount of time (e.g. 30 seconds).
+
+Level 2: Can be upgraded once CC is Level 2. Level 2 unlocks Advanced Mining Drones or improved mining equipment. This could mean your drones are more efficient or can safely mine Crystals. (If the game differentiates drone types: perhaps Mining Drone Mk II becomes available, which has the capability to extract Crystals faster or in larger quantities.) Upgrade Cost: ~300 Metal + 50 Crystal + 200 Gold. Requiring a bit of Crystal ensures the player has started Crystal mining before upgrading. DF L2 might also increase the build queue or speed for drones.
+
+Level 3+: (Potential future upgrades) Higher levels might unlock entirely new drone types (e.g. Construction Drones to speed up building, or Combat Drones for defense), or further efficiency improvements. For example, Level 3 could allow building of Explorer Drones if an Expedition Center isn’t separate – but in our design we introduce a separate Expedition module, so DF L3 would likely just further improve production speed and capacity. Upgrade Cost to L3: would involve more Crystal and possibly an Exotic Item if it unlocks a special drone. These higher levels are not immediately needed in the early walkthrough, but they provide room for expansion as the game updates.
+
+Mining Drones: (Built in the Drone Factory) These drones are assigned to asteroid clusters to collect Metal (and later Crystals). Each Mining Drone has a certain rate of extraction (e.g. X metal per minute). The more drones on a cluster, the faster it is mined out or the more continuous yield if infinite. Initially, you might only afford 1–2 drones, but can build more as Metal income increases. Drones automatically deposit gathered resources into your storage. (In the tutorial, after building a Mining Drone, the player will be guided to select an asteroid cluster to start mining.)
+
+Resource Storage Modules
+
+As production ramps up, you need places to store large quantities of resources. There are separate storage modules for each resource type. Upgrading storage is vital to hold enough materials for expensive upgrades (for example, you cannot stockpile 1000 Metal for CC3 if your storage cap is 500). This introduces a resource management challenge and an additional upgrading path for players.
+
+Metal Warehouse: A storage module that increases your Metal capacity.
+
+Unlock: Available at CC Level 1 (since you will need more capacity almost immediately).
+
+Level 1: Increases Metal storage capacity by a significant amount (for example, from 500 to 1000). Cost: ~100 Metal + 100 Gold (cheap, so you can build it early when needed). Build time is quick.
+
+Level 2: Requires CC2. Further increases capacity (say to 5000). Cost: ~300 Metal + 120 Gold.
+
+Higher levels allow storing tens of thousands of Metal, which will be needed for late-game construction. Each subsequent level requires a higher Command Center level and additional Crystal or exotic materials at later stages. (For instance, a Level 3 Warehouse (CC3) might cost 1000 Metal + 50 Crystal + 200 Gold.)
+
+Crystal Silo: A storage for Crystals (a Crystal Silo or vault).
+
+Unlock: Likely unlocked at CC Level 2 (when Crystal mining becomes relevant). The tutorial will prompt building one around the time you start acquiring Crystal so none is wasted.
+
+Level 1: Provides baseline Crystal storage (e.g. 500 units). Cost: ~200 Metal + 100 Gold (and possibly a token amount of Crystal, e.g. 20, just to link the concept, though it could be 0 Crystal because you might build it right as you start mining crystals).
+
+Level 2: (CC3 requirement) Increases capacity substantially (to a few thousand). Cost: ~500 Metal + 200 Crystal + 200 Gold.
+
+Higher levels (CC4+) may require exotic materials to expand, as crystals become abundant and the silo technology needs improvement to safely store large, volatile crystal quantities.
+
+Gold Vault: (Optional – depending on design) A storage for Gold currency. In many games, “gold” isn’t capped by storage the same way materials are, because it can be a soft currency. If a Gold Vault exists, it would function similarly: increase maximum Gold you can hold at once. However, we can assume for now that Gold is effectively uncapped or has a very high default cap, so a Gold storage module may not be needed in the initial game.
+
+Sensor Array (Optional module)
+
+Note: This module is an example of added complexity and can be included to introduce a scanning mechanic.
+
+Purpose: The Sensor Array is a scanning observatory that allows your base to discover new resource sites and anomalies. In the context of the tutorial, building a Sensor Array could be the trigger for revealing a Crystal-rich asteroid cluster once you reach CC Level 2. It adds a layer of realism: the crystals were not visible or accessible until you improved your sensors.
+
+Unlock: Available at CC Level 2. (The player can skip this if we decide to automatically reveal crystal asteroids at CC2, but including it gives the player an extra build and sense of discovery.)
+
+Cost: ~300 Metal + 150 Gold (moderate, since it’s an early CC2 building). Build time ~1 minute.
+
+Effect: Once built (or upgraded to Level 1), it “scans” the surrounding space and uncovers an asteroid cluster containing Crystals. It can also slightly increase the efficiency of mining (for example, reveal which asteroid among choices has the richest veins, or provide a bonus to drone mining speed due to better navigation). Upgrading the Sensor Array could further increase scanning range or reveal occasional anomalies that might contain Exotic Items or other bonuses (foreshadowing future content). This module isn’t strictly required to progress (you could tie crystal unlocking directly to CC2), but it enriches the gameplay by making the player take an active step to find advanced resources.
+
+Robotics Factory
+
+Purpose: The Robotics Factory (or Robot Assembly Plant) is where you build Attack Robots, the first military units of your colony. These robotic units are designed for combat and defense – for example, to protect your base or eventually engage in missions/combat off-base. The Robotics Factory also lets you upgrade robots or develop new robot models at higher levels. This module marks the transition from pure economy to military capabilities in the game.
+
+Unlock: Available at CC Level 3. (The Command Center must be level 3 to support the power and technology requirements of building combat robots.)
+
+Cost to Build: ~800 Metal + 200 Crystal + 300 Gold. (Significant resources, including Crystals, reflecting that it’s an advanced facility). Build time might be a bit longer (several minutes) because it’s a major building.
+
+Levels & Function:
+
+Level 1: Allows production of the basic Attack Robot unit. At L1, the Robotics Factory can produce a limited number of robots (or at a slower rate). Attack Robots (Mk I) require resources to build: e.g. 500 Metal + 200 Crystal + 1 AI Core each. Here, AI Core is an example of an Exotic Item required – upon attempting to build the first robot, the player will discover they lack this component. (We introduce the need for an Exotic Item at this point to push the player to the next gameplay element – exploration.) If the player has an AI Core, they can build the robot which might take some time (say 5 or 10 minutes base time, indicating these are heavier units). Attack Robots have combat stats (not detailed in this guide) and can be upgraded or used in future missions.
+
+Level 2: (Requires CC4) Increases production speed/capacity and could unlock an Advanced Attack Robot design. For example, at L2 the factory might allow building Heavy Attack Robots (Mk II) which have improved firepower or armor. These likely require even more resources per unit (e.g. additional Exotic Items like Alien Alloys for armor). Upgrade Cost to L2: ~2000 Metal + 1000 Crystal + 2 AI Cores + 500 Gold. This steep cost ensures the player has done significant expansion and exploration by this point.
+
+Higher Levels: Future upgrades could enable different unit types (like robotic vehicles or defensive turrets) or further efficiency. For instance, a Level 3 Robotics Factory might allow simultaneous production queues or unlock Sentinel Drones for base defense. Each level would require a higher Command Center and increasing amounts of Crystals and exotic components.
+
+Attack Robots: (Built in Robotics Factory) These are your first offensive/defensive units. Think of them as mechanized soldiers. Initially, you might create a small squad to defend against potential threats or to prepare for story missions. They can possibly be upgraded individually with special items (e.g. equip weapons or armor you find as exotic loot) or simply by building new improved models from the factory upgrades. The tutorial will guide you to build one once you have the parts, and later you can build more for combat scenarios.
+
+Expedition Center (Exploration Module)
+
+Purpose: The Expedition Center is a module that manages exploration missions and the collection of Exotic Items. Building this allows you to produce Explorer Drones (or probes) that venture out into uncharted space, derelict ships, or distant asteroids to forage for rare components. This provides a parallel activity for players while waiting for other processes – you can always be exploring to gather exotic loot needed for advanced upgrades. The Expedition Center essentially adds a new gameplay layer: passive (or later active) exploration.
+
+Unlock: Available at CC Level 3 (or Level 4, depending on balance). We introduce it in the tutorial as soon as the need for an Exotic Item (the AI Core for the robot) arises. In our walkthrough, we’ll assume CC3 is sufficient to build it immediately after Robotics Factory, so the player isn’t stuck too long.
+
+Cost: ~500 Metal + 300 Crystal + 300 Gold to build. Build time might be moderate (a few minutes). It’s a significant building but not as expensive as CC4.
+
+Function: Once built, the Expedition Center allows you to deploy an Explorer Drone. The first Explorer Drone unit might even come with the building (or be relatively cheap to make, e.g. 100 Metal + 50 Crystal) so the player can quickly start one expedition. Explorer Drones will automatically search for Exotic Items over time – for example, an Explorer might bring back 1 Exotic Item (like an AI Core, Alien Alloy, or other rare find) every hour or so. The player doesn’t have to actively control it (hence “idle” collection), but they can check back to see what was found. In future updates, this system could be expanded to allow active missions: players could send explorers to specific coordinates or engage in mini-games to find treasure faster, but for now, it’s automated.
+
+Level 1: Allows 1 active expedition at a time (one drone out searching). After a certain period, the drone returns (or continuously generates) with some loot. Types of Exotic Items that might be found include AI Cores (for robots), Alien Artifacts (perhaps used for research or special upgrades), Rare Minerals or Alien Alloys (for advanced ship hulls and building upgrades). At Level 1, the yield is low and limited.
+
+Level 2: (Requires CC4) Could allow 2 simultaneous explorer missions or unlock higher success rates/faster retrieval. Upgrade Cost: likely involves Crystals and maybe the very Exotic Items you’ve started gathering (e.g. use some AI Cores to upgrade the center’s capabilities) along with Gold. This upgrade makes exploration more efficient for the later game when more exotic resources are needed regularly.
+
+Higher levels can continue to improve exploration speed, capacity, and unlock the ability to find new categories of items. For example, an upgraded Expedition Center might locate lost ship parts required for building starships in the Shipyard module.
+
+(Future Module) Shipyard / Hangar
+
+Note: This is an advanced module that might be beyond the initial tutorial, but it’s worth mentioning to illustrate long-term goals.
+
+Purpose: The Shipyard (or Hangar) is where you can build starships or larger spacecraft. These could be used for long-range exploration, transporting troops, or battling enemy fleets. It represents the next tier of progression after establishing a strong planetary base with robots.
+
+Unlock: Available at CC Level 4 (or 5). The Command Center needs to be high-level to support starship construction.
+
+Cost: Very high – e.g. 10,000 Metal + 5,000 Crystal + multiple Exotic Items (like 5 Alien Alloys for hull construction and 5 AI Cores for ship systems) + a large Gold investment. This cost ensures that only a player who has gone through earlier stages and gathered significant resources can build it. Build time would also be long (perhaps several hours or more).
+
+Function: Allows construction of the first spaceship (perhaps a scout ship or transport). A basic starship might itself cost thousands of Metal/Crystal and some exotic components (e.g. a Hyperdrive Unit that you had to find via exploration). The presence of the Shipyard gives players a long-term objective: gathering enough advanced resources to expand beyond the initial sector. Shipyard upgrades would unlock larger or more specialized ships (fighters, mining ships for faster resource gathering off-world, colonization ships, etc.). Each upgrade would be gated by the next CC level and require substantial exotic materials, aligning with the idea that advanced units cost more than just the basic resources
+ogame.life
+.
+
+These modules together create a tech tree of progression. Table 1 below summarizes each module, its unlock conditions, and primary purpose for quick reference:
+
+Table 1: Module Unlocks and Purposes
+
+Module	Unlock Requirement	Purpose/Function
+Command Center	N/A (starting building)	HQ of the base; limits other module levels; unlocks new modules at each upgrade; provides basic storage and trickle of Gold.
+Drone Factory	CC Level 1	Builds Mining Drones (for Metal, later Crystal); upgrade to improve drone tech and production speed.
+Metal Warehouse	CC Level 1	Increases Metal storage capacity; higher levels needed to stockpile for expensive constructions.
+Crystal Silo	CC Level 2	Increases Crystal storage capacity; needed once crystal mining begins.
+Sensor Array	CC Level 2 (optional)	Scans and unlocks new resource locations (e.g., reveals crystal asteroids); improves mining efficiency slightly.
+Robotics Factory	CC Level 3	Trains/assembles Attack Robots for combat; higher levels unlock better robots and faster queue.
+Expedition Center	CC Level 3	Launches Explorer Drones to gather Exotic Items (idle exploration); upgrade for more missions/faster finds.
+Shipyard	CC Level 4 or 5	Constructs starships for advanced exploration and combat (future feature, high resource and exotic cost).
+Research Lab	CC Level 4 (possible)	(If introduced) Allows research of tech upgrades (e.g., improved drone mining rate, new blueprints). Could be used to unlock enhancements rather than directly needed in tutorial progression.
+Defense Turret/Shield	CC Level 4 (possible)	(If threats are introduced) Provides base defense against attacks. Not covered in tutorial if no combat yet, but could exist for future PvE/PvP content.
+
+(The Research Lab and Defense modules are optional additions not covered in the initial walkthrough, but noted for completeness and potential future fun complexity.)
+
+Tutorial Walkthrough for New Players
+
+This section provides a step-by-step walkthrough that a new player would experience when starting the game. The goal is to guide the player through constructing their base, gathering resources, and unlocking technologies in a sensible order. Each step is presented as the game might prompt the player, with the reasoning behind it. By the end of this tutorial, the player will understand all major systems: building and upgrading modules, mining resources (Metal and Crystal), increasing storage, and using exploration to gather exotic components for advanced units.
+
+Note: All module names should be clickable in-game for the player to view details on their current level, stats, and what they unlock. (For example, if the player taps the Drone Factory, it should show it’s Level 1, how many drones it can produce, and what upgrading it would do, etc.) The tutorial will encourage using these info panels to learn more, ensuring players know how to get details on demand.
+
+Step 1: Build the Drone Factory (Unlock Mining)
+
+Initial Briefing: The game begins with a short introduction: “Welcome, Commander! Your mission is to establish a thriving mining colony. First, we need resources. Build a Drone Factory to start constructing mining drones.” You have Command Center Level 1 operational and a small reserve of Gold and Metal to begin. The tutorial highlights the Drone Factory in the build menu.
+
+Construction of Drone Factory: The player spends ~50 Metal and 200 Gold to build the Drone Factory (L1). This takes only a few seconds. Tutorial Tip: It might say, “All modules have build times. Early on they are fast. As you progress, upgrades will take longer – plan ahead and keep your builders busy!” Once the Drone Factory is built, the game can show an info panel: “Drone Factory Level 1 – allows construction of Mining Drones. Upgrade the factory or Command Center to unlock more drone types.”
+
+Step 2: Produce a Mining Drone
+
+Building a Mining Drone: With the Drone Factory ready, the tutorial now guides: “Now construct your first Mining Drone to gather Metal.” The player opens the Drone Factory interface, which lists Mining Drone (cost ~50 Metal, 50 Gold each). Using remaining starting resources, the player queues up 1 Mining Drone. The build time for the drone might be e.g. 30 seconds.
+
+Tip During Wait: While the drone is being built, a tip can appear: “Drones will automatically harvest resources once deployed. You can build multiple drones to increase mining speed. Later, you can even upgrade drones or build other types for new tasks.” This keeps the player engaged during the short wait. (This is a very short wait – as complexity grows, the game will ensure there are always things to do while waiting, like planning upgrades or exploring.)
+
+Step 3: Assign Drones to Asteroid Cluster (Metal Mining)
+
+Asteroid Field Overview: Once the Mining Drone is ready, the game reveals the nearby asteroid field. “Multiple asteroid clusters detected. Select one for your drone to mine.” The player is shown perhaps two or three clusters orbiting the base, e.g. Cluster A and Cluster B, which both contain Metal deposits (and maybe differing quantities or rates). The existence of more than one cluster gives the player a choice – perhaps one cluster has a high yield but slower extraction (larger rocks, further away) and another has quicker yield but lower total resources. This introduces strategy in resource gathering.
+
+Assign Drone: The tutorial has the player tap Cluster A (for example) and then “send 1 Mining Drone”. The UI confirms the drone is now mining. The resource counter for Metal begins ticking up as the drone brings in ore.
+
+Feedback: The game might show a tiny drone icon at the asteroid and a progress bar or a “Metal +X” floating text to indicate income. After a short period, the player accumulates some Metal (e.g. +20 Metal per minute, or a small chunk delivered every few seconds).
+
+Tip: “Great! Your drone is mining Metal. You can view your resources at the top of the screen. Metal will be crucial for building and upgrading modules. You can assign additional drones or switch to another asteroid at any time. Different clusters might have different resources or densities – choose wisely.” (At this early stage, both clusters are Metal so it doesn’t matter much, but later one could become a Crystal cluster or simply there for player choice.)
+
+Step 4: Build a Metal Warehouse (Increase Storage)
+
+Storage Warning: As the Metal from the drone accumulates, the game checks the storage. The Command Center Level 1 could hold, say, 500 Metal by itself. Suppose the drone will eventually fill that. The tutorial will step in: “Your Metal storage is limited. Build a Metal Warehouse to store more Metal, so none is wasted!” This could trigger when the player’s Metal approaches the 500 cap or even right after starting mining to preempt the cap.
+
+Build Warehouse: The player uses ~100 Metal and 100 Gold (from remaining reserves and newly mined metal) to construct a Metal Warehouse Level 1. Once built (very quick build), the Metal capacity increases (to ~1000). The game can show: “Metal capacity increased! You can now hold more in storage. Upgrading storage further will be necessary as you gather larger amounts for big projects.” This concept prepares them for future storage upgrades (like Crystal Silo later).
+
+Optional – Additional Drone: With increased capacity, the tutorial might encourage building a second Mining Drone if resources allow: “If you have enough Metal, build another Mining Drone to speed up collection.” This is optional, but if the player has spare resources, they can try it. If not, the tutorial will naturally wait as the single drone collects what’s needed for the next step.
+
+Step 5: Upgrade Command Center to Level 2 (Unlock Crystals)
+
+Prepare for CC2: The next major step is to upgrade the Command Center to level 2. The tutorial will say: “To expand our base and unlock new resources, upgrade your Command Center to Level 2.” It will list the requirements: perhaps 600 Metal and 200 Gold (as we set above). By now, the player has been mining Metal, so they should be nearing that amount. If they came up short, they might need to wait a minute or two more while mining (which is fine; they can watch the drone or plan ahead).
+
+Ensure Requirements: Since the CC2 Metal requirement (600) exceeds initial capacity (500), the player needed to have built the Metal Warehouse in Step 4 – the tutorial already covered that. Now, with capacity 1000 and hopefully enough metal gathered (or about to be), the upgrade can proceed.
+
+Upgrade CC to 2: The player spends the resources and begins the CC upgrade. Build time might be short (e.g. 1 minute) to not stall too early. The game might show the CC building visually upgrading.
+
+While Upgrading: Because this is the first upgrade with a noticeable wait, the tutorial offers advice: “Upgrading your Command Center unlocks new modules. Remember, no module can exceed the Command Center’s level, so always plan to upgrade your CC regularly
+riseofkingdoms.fandom.com
+. Higher CC levels also increase your storage and might attract more colonists/traders (flavor text). You can still manage other tasks while a building upgrades – for example, keep an eye on your mining drones or plan your next build.” This trains players that the game will often have parallel tasks (idle game style).
+
+CC2 Complete: Once done, a celebratory note: “Command Center is now Level 2! New structures available.” The game highlights what’s new: perhaps Crystal Silo and either the Sensor Array module or a direct note that “Sensors indicate a new type of resource in the asteroid field: Crystal!”
+
+Step 6: Discover and Mine Crystals
+
+Reveal Crystal Cluster: Upon CC reaching Level 2, the game either automatically reveals a new asteroid cluster containing Crystal or instructs the player to build the Sensor Array (if we included that step).
+
+If using Sensor Array: “Build a Sensor Array to scan for rare resources.” The player builds it (~300 Metal, 150 Gold). After a short build: “Scan complete – we’ve detected crystalline deposits in a nearby asteroid cluster!” Then a new cluster (say Cluster C) appears on the map, labeled as containing Crystal. This cluster might have a smaller capacity or slower yield, reflecting that Crystal is rarer.
+
+If no Sensor Array step: The game simply informs: “Our improved scanners (thanks to CC2) have located a Crystal-rich asteroid! You can now mine Crystal, a valuable resource for advanced tech.” And the cluster appears.
+
+Crystal Silo Prompt: “Before mining Crystal, build a Crystal Silo to store it.” The player is prompted to construct a Crystal Silo Level 1 using some Metal (and possibly a tiny bit of Crystal if we assume they start with a token amount, but let’s say no Crystal needed to build it initially). They build the silo, which now allows storage of, e.g., 500 Crystal. Note: The player currently has 0 Crystal, but building storage first ensures none is wasted once they start mining.
+
+Assign Drones to Crystal: Now the player can assign mining drones to the new crystal cluster. However, are their existing drones able to mine it? If we decided that basic Mining Drones can gather Crystal (perhaps at a slower rate), the tutorial can say: “Send one of your Mining Drones to the Crystal asteroid to begin collection. Crystal is harder to mine, so progress may be slower.” The player then reassigns a drone (or if they built a second drone earlier, they can dedicate one to metal and one to crystal).
+
+If our design had specialized drones for crystal (unlocked via Drone Factory L2), the tutorial would instead say: “Upgrade your Drone Factory to Level 2 to build Advanced Mining Drones capable of extracting Crystal.” That would add an extra step: DF to L2 costs some Crystal, which the player doesn’t have yet – a catch-22. So for simplicity, assume normal drones can mine Crystal at Level 1, perhaps with a efficiency penalty. We’ll avoid the specialized drone requirement at this moment to keep the flow smooth.
+
+Mining Crystal: The assigned drone begins mining. The Crystal yield might be something like 1 Crystal every few seconds (much slower than metal). The player sees the first few units of Crystal appear in their resource bar.
+
+Tip: “Crystal acquired! Notice it accumulates slower than metal. Crystals are needed for advanced buildings like the Robotics Factory. You’ll want to gather enough before proceeding.” The game might also hint: “You can continue to upgrade your Drone Factory for better efficiency, or build additional drones to speed up resource gain if you have resources.” (At this point, the player might consider building another drone if they haven’t already, or upgrading Drone Factory to L2 if they feel the need, but the tutorial doesn’t force it now.)
+
+Step 7: Progression Check – Planning Upgrades
+
+Observation: Now the player has multi-resource income (Metal and a bit of Crystal). The tutorial might not jump to the next build immediately, allowing the player a moment to collect enough Crystal for the next big construction. This is a good time to educate on planning: “While gathering crystals, consider upgrading your Metal Warehouse or building another Mining Drone if you need to boost Metal income. You’ll need a good stockpile of both Metal and Crystal for upcoming projects.”
+
+Upgrade Suggestions: For example, the tutorial can suggest: “It looks like your Metal income is strong, but Crystal will take time. Ensure you have at least, say, 200 Crystal stored for the Robotics Factory. In the meantime, you can upgrade your Metal Warehouse to Level 2 if you’re hitting the cap, or upgrade the Drone Factory to build more drones.” This kind of guidance helps players use the waiting time effectively (a hallmark of idle/incremental games – always have something to optimize while waiting).
+
+(The exact amount of Crystal needed next will depend on what we set for Robotics Factory cost. We set ~200 Crystal for it. The tutorial will push the player toward that goal.)
+
+Step 8: Upgrade Command Center to Level 3 (Preparation for Robotics)
+
+CC3 Prerequisite: The Robotics Factory is unlocked at CC3, so the player must upgrade the Command Center again. The tutorial will announce: “Our next objective is to build a Robotics Factory for defense units. Upgrade Command Center to Level 3 to enable this.” It will list the cost: e.g. 1000 Metal, 200 Crystal, 500 Gold.
+
+Resource Check: By now, the player likely has mined enough Metal (especially if they kept one drone on metal and maybe had multiple drones), and is working towards Crystal. If they don’t have 200 Crystal yet, the game might encourage them to temporarily assign more drones to crystals or simply wait a bit longer. This is another small pacing moment – Crystal’s slower acquisition teaches the player patience and resource planning.
+
+Storage Check: 1000 Metal requirement means the player’s storage (which is 1000 after Warehouse L1) is exactly at the threshold. If they have mined to full capacity, they have 1000 Metal ready. If not, they might upgrade Metal Warehouse to Level 2 (capacity 5000) to be safe, though it’s not strictly required if they time it right. The tutorial can subtly mention: “Ensure your storage can hold the resources required. If not, build or upgrade storage modules.” The Crystal requirement (200) is below the silo cap of 500, so that’s fine.
+
+Upgrade CC to 3: The player initiates the Command Center Level 3 upgrade with the required resources. This will likely have a longer build time than CC2 – perhaps 5–10 minutes. The tutorial will note: “Upgrading to CC3... This will take a few minutes. You have expanded your base considerably – higher level upgrades take longer. Use this time to manage your resources: keep an eye on your mining operations, or plan your next build. Remember, you can queue up drone production or other building upgrades while the Command Center upgrades.” (If multiple builders aren’t allowed, then they can at least do unit production or exploration concurrently.)
+
+Multi-tasking: At this point, the game could allow the player to do things like produce an extra Mining Drone or upgrade the Drone Factory if they want. The tutorial doesn’t necessarily give a new directive here, to let the CC upgrade run, but it ensures the player isn’t idle with nothing to do. Perhaps it introduces the concept of “Achievements or missions” briefly: “Goal: accumulate 1000 Metal – reward 50 Gold” to encourage them to collect resources while waiting.
+
+CC3 Complete: After the wait, Command Center is now Level 3. New modules unlocked: Robotics Factory (the major one), and possibly Expedition Center (if we allow CC3 for that too) or at least the concept of exploration which we’ll get to after robotics. The game highlights: “Command Center upgraded! You can now build the Robotics Factory to create Attack Robots.” (If any other modules unlock at 3, like maybe “Research Lab”, it could mention them too, but to stay focused, we’ll emphasize Robotics Factory now.)
+
+Step 9: Build the Robotics Factory (Unlock Combat Units)
+
+Build Robotics Factory: The tutorial now guides the player: “Construct a Robotics Factory to enable production of Attack Robots.” The player selects the Robotics Factory from the build menu and sees the cost (around 800 Metal, 200 Crystal, 300 Gold in our design). By this time, the player should have accumulated enough again (the CC3 wait allowed more mining). If not, they can mine a bit more or were possibly instructed to prepare. They build the Robotics Factory, which might take some minutes (maybe 5 minutes).
+
+Unit Cap Note: If the game has a concept of power or module slots, it might ensure the player has enough spare resources and base power to sustain this new building, but since none such were introduced earlier, we skip that complexity.
+
+Robotics Factory Info: Once built, the tutorial shows: “Robotics Factory (Level 1) is ready. Here you can build Attack Robots. These will defend your base and can be used for offensive missions in the future.” The game might narratively hint at looming threats or missions: “Your colony won’t be alone out here – having some robots will ensure you’re prepared for anything.”
+
+Attempt to Build Robot: The tutorial then says: “Let’s build your first Attack Robot. Open the Robotics Factory and queue up an Attack Robot.” The player does so, seeing the cost. For example: Attack Robot – requires 500 Metal, 200 Crystal, 1 AI Core, and some Gold (say 100). At this moment, the player has Metal and Crystal, but AI Core = 0. The build button might be greyed out or a pop-up says “Missing component: AI Core”.
+
+Introduce Exotic Item Need: A dialog or the advisor character explains: “It looks like we lack an AI Core, a critical component to build an Attack Robot’s control unit. AI Cores can’t be mined like regular resources.” This is the introduction of Exotic Items to the player in a story-driven way. “We’ll need to salvage or discover such components by exploring beyond our base.”
+
+Step 10: Establish Exploration (Obtain Exotic Item)
+
+Build Expedition Center: The game now prompts: “Build an Expedition Center to start searching for rare components like the AI Core.” The player uses available resources (500 Metal, 300 Crystal, 300 Gold) to construct the Expedition Center (unlocked at CC3 as per our plan). If they are short on Crystal due to spending on Robotics Factory and maybe robot attempt, they might need to wait a bit mining more crystal. This is okay, as it underscores needing resource reserves for big sequences. They build it, perhaps ~4-5 minute construction.
+
+Explorer Drone: Once the Expedition Center is up, it might automatically grant one Explorer Drone ready to deploy. The tutorial says: “Your Expedition Center is ready. Launch an Explorer Drone to begin scouting for an AI Core.” The player clicks a “Launch Expedition” button. If an Explorer Drone unit needs to be built first, the center might list it for a small cost (e.g. 100 Metal, 50 Crystal, which hopefully they have; if not, a quick mine). Let’s assume one is free to avoid extra steps. The drone departs and a timer or status indicator starts: e.g. “Exploring… (ETA: 10 minutes for return)”.
+
+Idle vs Active Choice: The tutorial notes: “Exploration underway! Your explorer drone will passively search for useful items. In this version of the program, the process is automated – you can simply wait for it to return with results. (In the future, you may have the option to actively guide exploration for potentially faster gains, but for now, sit back and let the drone do its work.)” This addresses the idle/active choice: we acknowledge that for now it’s idle collection only, active foraging will come later.
+
+Parallel Activities: While the explorer is out (say the default find time is 10 minutes for an AI Core), the game encourages the player to do other tasks: “While waiting for the AI Core, consider upgrading your existing modules or mining more resources. Perhaps upgrade your Drone Factory (to build more drones) or your storage if needed. There’s always something to optimize!” This ensures the player isn’t bored. For instance, now might be a good time to upgrade the Drone Factory to Level 2 if not done yet, or build another Metal Warehouse or Crystal Silo if nearing capacity with the expansion.
+
+AI Core Found: After the expedition time passes, a notification pops: “Explorer Drone returned successfully! It retrieved 1 AI Core.” The exotic resource is added to the player’s inventory. The tutorial character might add: “Success! We have the AI Core needed to build our Attack Robot. (Explorers can find other rare items too – keep sending them out whenever you need exotic materials for advanced projects.)”
+
+Step 11: Build Your First Attack Robot
+
+Construct Robot: Now that the AI Core is available, the player can go back to the Robotics Factory and queue the Attack Robot. They spend the required 500 Metal, 200 Crystal, 1 AI Core, and some Gold. The robot begins assembling. This might have a longer build time (for example, 10 minutes) as a significant unit.
+
+Completion and Usage: Once the Attack Robot is built, the game shows it as a unit. “Congratulations! You’ve assembled your first Attack Robot.” There might be an animation of the robot coming online. The tutorial can explain its uses: “Attack Robots will defend your base automatically if it comes under attack. You can also use them in future missions to secure new areas or protect your mining operations. Keep them upgraded and build more to strengthen your forces.”
+
+Robot Upgrades: The game might now highlight that the Robotics Factory can be upgraded to build more advanced robots or build them faster. “You can upgrade the Robotics Factory to Level 2 when your Command Center reaches Level 4 to unlock improved robots.” This plants the seed for future progression.
+
+Unit Management Tip: If there’s a unit management screen, introduce it: “Tap the garrison to view your forces. You have 1 Attack Robot ready. In later gameplay, you might command these units in battles or send them on missions.” (Even if active combat isn’t implemented yet, the player should know the robot isn’t just a number – it has purpose.)
+
+Step 12: Further Progression and Goals
+
+Complete Basic Tutorial: At this point, the core tutorial objectives (build basic economy, get metal, get crystal, build robot) are complete. The game likely gives a wrap-up message acknowledging the player’s progress: “Well done, Commander! You’ve established a functioning base, with resource production, storage, and defense.” Possibly reward them with a small bonus (some Gold or a second AI Core) for finishing tutorial.
+
+Outline Next Goals: The tutorial then transitions to guidance for the open play: “From here, you can continue to develop your colony. Upgrade your Command Center to unlock new modules and higher levels. For example:”
+
+“CC4 will let you build a Shipyard and Research Lab, opening the path to starships and further tech!”
+
+“With more Attack Robots, you could form a strike team. Perhaps there are pirate outposts in this sector to eliminate... (hinting at future combat).”
+
+“Keep an eye on your resource rates – build more drones, upgrade mines and storages, and ensure you always have enough to support expansions.”
+
+“Regularly send out Explorer Drones for exotic items. Advanced buildings and units will require things like Alien Alloys or other artifacts, which our scanners show are out there in the debris of ancient ships.”
+
+Emphasize Increasing Complexity: Note how the game will slowly get more complex: “As you progress, projects will take longer and require more resources, but you’ll also have more to manage. There’s always something to do: whether it’s reorganizing your mining strategy, planning upgrades, or exploring new frontiers.”
+
+Encourage Experimentation: Finally: “Feel free to explore the interface. Every module has a detailed info screen (clickable module names) that explains its benefits and next upgrade cost. Set your own goals – whether rushing to build a fleet of robots or maximizing your resource income. The fate of the colony is in your hands!”
+
+Step 13: Example Advanced Path (Beyond Tutorial)
+
+(This step is an extra overview for developers/players of how the path continues logically, ensuring there is a clear progression up to higher tiers. It might not be explicitly shown to players as part of the guided tutorial, but it’s important for design.)
+
+After the tutorial, the player’s likely next move is upgrading Command Center to Level 4. CC4 will unlock the Shipyard (Hangar) and possibly the Research Lab. Building a Shipyard allows the construction of a basic starship (e.g. a Scout Ship) which might require, say, 2 AI Cores and 5 Alien Alloys (another exotic) in addition to lots of Metal/Crystal. The player will use the Expedition Center to find those Alien Alloys (perhaps unlocked as a find once CC4 is reached). This introduces another exotic item type and a new unit (ships) – adding complexity and a new goal. The research lab, if implemented, can allow upgrades like increasing drone mining speed, improving robot combat ability, or unlocking new module levels through research projects, giving a secondary progression system.
+
+Resource Balancing: By this stage, players juggle three main resources (Gold, Metal, Crystal) and multiple exotic items. Each new tier tends to emphasize a new resource: just as advanced buildings needed Crystal, the most advanced need Exotic Items. This follows patterns seen in other games (e.g. in OGame, “Crystal is needed for advanced buildings and research, and Deuterium (a rare resource) for high-tech ships”
+ogame.life
+). Our game mirrors this: Metal for basics, Crystal for intermediate tech, and Exotic items for top-tier creations.
+
+Increasing Challenge: Building times and costs now are significantly larger, so the gameplay shifts to a more idle style – players will log in, queue up a long upgrade (like CC4 or a Shipyard that might take hours), then spend their session doing side activities: sending expeditions, managing resource flows, possibly engaging in small combat missions if available (not in first version).
+
+Idle Engagement: To keep engagement, features like daily missions, achievements, or events can be introduced (e.g. a daily reward for logging in, or a time-limited boost to mining from a solar flare event, etc.). These are beyond the scope of this initial guide but should be considered to keep the gameplay loop interesting while waiting for builds.
+
+Finally, ensure that no progression step is dead-ended: every module upgrade unlocks something or improves something tangible, and multiple pathways open (for instance, at CC3+, players might choose to focus on maxing out resource production before pushing CC4, or rush CC4 to get new content). The design above provides a clear path: Drones -> Metal -> CC2 -> Crystal -> CC3 -> Robots -> Exotic -> CC4 -> Ships/Research, with each phase building on the previous. The balance (costs and times) can be tuned during development, but the structure should allow continuous progress. Early game is fast and active, and later game slows down but offers breadth of activities (resource management, base optimization, exploration, combat) to keep the player engaged.
+
+Conclusion: This comprehensive guide should serve as the development blueprint for implementing the first portion of the game. It details all modules, their purposes, costs and requirements, and provides a complete walkthrough of the new player experience. By following this design, Replit’s development team can create a tutorial that effectively teaches players the game mechanics, ensures a smooth difficulty curve, and sets the stage for deeper gameplay as more features are introduced. Enjoy building the stars, and good luck, Commander!

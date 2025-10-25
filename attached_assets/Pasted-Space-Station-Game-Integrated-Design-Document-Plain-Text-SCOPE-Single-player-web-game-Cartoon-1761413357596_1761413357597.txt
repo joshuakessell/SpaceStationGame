@@ -1,0 +1,314 @@
+Space Station Game – Integrated Design Document (Plain Text)
+
+SCOPE
+Single-player, web game. Cartoon style. Free for proof of concept. Future: multiplayer via AWS GameLift, premium items, accounts. Current goal: metal mining with drones, crystal extraction via rifts and arrays, exotic items via exploration, early combat robots. Command Center level caps all other modules.
+
+CORE LOOP
+Mine metal with drones. Upgrade Command Center. Scan and exploit rifts to extract crystals. Store resources. Build Robotics Factory. Use Exploration to acquire exotic items. Build first attack robot. Continue upgrading modules to unlock more systems.
+
+RESOURCES
+Gold: soft currency for most builds and upgrades.
+Metal: primary construction resource. Source: asteroid clusters via Mining Drones.
+Crystal: advanced tech resource. Source: dimensional rifts via deployed Extraction Arrays (continuous tick extraction with rift decay).
+Exotic Items: rare components (e.g., AI Core, Alien Alloy). Source: Exploration missions (idle). Used for high-tier upgrades, robots, future ships.
+
+GLOBAL RULES
+
+Command Center level hard-caps all other module levels. No module may exceed CC level.
+
+One active build queue per base for structures. Unit queues are per factory.
+
+Early build/upgrade timers ≤ 15 minutes. Midgame ≤ 1 day max.
+
+Storage caps gate progression. Players must expand storage to stockpile for milestones.
+
+All modules are clickable. Each module panel shows: name, level, effects, storage or production, queue, upgrade requirements, cost, time, dependencies, and “What’s next” unlocks.
+
+MODULE INDEX (with purpose, unlocks, base costs, level effects)
+Numbers are starting points for implementation. Tune during playtests.
+
+A) Command Center (CC)
+Purpose: HQ. Unlocks modules. Caps other module levels. Provides base storage.
+Unlock: start.
+Level 1: starting cache 1000 Gold, 100 Metal. Storage: 500 Metal, 100 Crystal. Cost to L2: 600 Metal, 200 Gold. Time: 1m.
+Level 2: unlocks Rift Scanner, Array Bay, Crystal Silo, Metal Warehouse L2. Cost to L3: 1000 Metal, 500 Gold. Time: 5m.
+Level 3: unlocks Robotics Factory, Expedition Center, Storage L3. Cost to L4: 5000 Metal, 1000 Crystal, 1000 Gold (optionally +1 Exotic for milestone). Time: 60m.
+Level 4: unlocks Research Lab and (future) Shipyard. Cost to L5: large (tens of thousands Metal, several thousand Crystal, multiple Exotics). Time: long (hours).
+Notes: Remove crystal requirement from CC3 (since crystals start at CC2 via arrays). Keep crystal in CC4 cost.
+
+B) Drone Factory
+Purpose: produce Mining Drones for metal (and general utility later).
+Unlock: CC1.
+Build cost L1: 50 Metal, 200 Gold. Time: 15s.
+Level effects:
+L1: unlock Mining Drone Mk I. Drone build time 30s. Cost per drone: 50 Metal, 50 Gold.
+L2 (requires CC2): +25% drone build speed or +1 parallel queue; +10% mining rate to all drones. Cost 300 Metal, 200 Gold, 50 Crystal. Time 1m.
+L3 (requires CC3): +25% speed, +1 queue, +10% mining rate. Cost 1000 Metal, 200 Crystal, 300 Gold. Time 5m.
+
+C) Metal Warehouse
+Purpose: metal storage.
+Unlock: CC1.
+L1: +500 → cap 1000. Cost 100 Metal, 100 Gold. Time 15s.
+L2 (CC2): cap 5000. Cost 300 Metal, 120 Gold. Time 45s.
+L3 (CC3): cap 20000. Cost 1000 Metal, 50 Crystal, 200 Gold. Time 2m.
+L4 (CC4): cap 80000. Cost 4000 Metal, 500 Crystal, 600 Gold. Time 10m.
+
+D) Crystal Silo
+Purpose: crystal storage.
+Unlock: CC2.
+L1: cap 500. Cost 200 Metal, 100 Gold. Time 30s.
+L2 (CC3): cap 3000. Cost 500 Metal, 200 Crystal, 200 Gold. Time 2m.
+L3 (CC4): cap 12000. Cost 2000 Metal, 800 Crystal, 500 Gold. Time 10m.
+
+E) Rift Scanner
+Purpose: discovers dimensional rifts that leak crystals.
+Unlock: CC2.
+Build cost L1: 300 Metal, 150 Gold. Time 1m.
+Scan action: press Scan to roll rifts within radius.
+Scanner stats by level:
+L1: max rifts tracked 2; scan radius 50 units.
+L2 (CC3): max rifts 4; radius 100. Cost 600 Metal, 300 Gold. Time 2m.
+L3 (CC4): max rifts 6; radius 150. Cost 1500 Metal, 700 Gold, 300 Crystal. Time 6m.
+Rift Properties on discovery (random):
+Stability: 500–1000 (hit points).
+Richness: 5–15 crystals per tick baseline (environmental leak rate; used as upstream cap/benchmark).
+Volatility: 0.8–1.2 multiplier applied to decay.
+Distance class: Short / Mid / Deep (flavor; optional travel time if you later allow movable arrays; not needed for fixed arrays).
+Notes: Scanning can be repeated when capacity frees (after collapse) or on cooldown (e.g., 60s).
+
+F) Array Bay
+Purpose: constructs Extraction Arrays and manages deployment to rifts.
+Unlock: CC2.
+Build cost L1: 350 Metal, 200 Gold. Time 1m.
+Arrays (built idle, then deployed):
+Mk1 Array: 2 crystals/tick extraction. Cost 200 Metal, 100 Gold. Build time 30s.
+Mk2 Array: 5 crystals/tick. Cost 500 Metal, 250 Gold. Build time 60s.
+Mk3 Array: 10 crystals/tick. Cost 1000 Metal, 500 Gold. Build time 120s.
+Deployment rules:
+Select idle array → Deploy → choose rift. Locks to rift until recall. Deposits crystals each tick directly to storage.
+Rift decay model (server tick = 10s):
+Passive decay: −1 stability per tick.
+Extraction decay: −0.5 stability per crystal extracted per tick.
+Volatility: multiply total decay by volatility 0.8–1.2.
+Example: rift stability 800, richness 10, volatility 1.1; Mk2 extracting 5 per tick → decay per tick = (1 + 5×0.5)×1.1 = 3.85. Approx 208 ticks (34.6 min) to collapse.
+Collapse:
+At 0 stability, rift disappears. Deployed array is decommissioned (destroyed). Free a rift slot by scanning again and rebuild arrays as needed.
+Array upgrades (only when array is idle/recalled):
+Uplink: +10% crystals/tick per level (multiplicative). Base cost 100 Metal, 50 Gold; ×1.5 cost scaling per level. Max levels: Tier 1 arrays 3, Tier 2 (Mk2) 5, Tier 3 (Mk3) 7.
+Beam: reduces extraction damage factor applied to stability (e.g., −5% per level to the 0.5 coefficient). Base cost 80 Metal, 40 Gold; linear scaling ×1.4.
+Telemetry: improves scanning efficacy (future tie-in: +5% chance for higher richness, or −10% scan cooldown per level). Base cost 60 Metal, 30 Gold; ×1.3.
+Array Bay levels:
+L1: build Mk1, deploy up to 2 arrays concurrently (subject to Scanner rift cap).
+L2 (CC3): unlock Mk2, +1 deploy slot (total 3). Cost 700 Metal, 300 Gold. Time 2m.
+L3 (CC4): unlock Mk3, +1 deploy slot (total 4). Cost 1800 Metal, 800 Gold, 300 Crystal. Time 6m.
+Note: Effective extraction per rift should not exceed “Richness” too harshly if you later introduce cap; for now, richness is reference, not hard cap.
+
+G) Robotics Factory
+Purpose: produce Attack Robots.
+Unlock: CC3.
+Build cost L1: 800 Metal, 200 Crystal, 300 Gold. Time 5m.
+Robot Mk I unit: cost 500 Metal, 200 Crystal, 1 AI Core, 100 Gold. Build time 10m.
+L2 (CC4): faster queue (+1), unlock Robot Mk II recipe. Cost 2000 Metal, 1000 Crystal, 2 AI Cores, 500 Gold. Time 10m.
+Notes: first robot attempt will surface AI Core requirement to push Exploration.
+
+H) Expedition Center
+Purpose: launches Explorer Drones to obtain Exotic Items (idle).
+Unlock: CC3.
+Build cost L1: 500 Metal, 300 Crystal, 300 Gold. Time 4m.
+L1: 1 concurrent expedition. Outcomes: AI Core, Alien Alloy, Misc Relics. Base cycle time 10–60 minutes. Fixed for POC: 10 minutes → 1 AI Core.
+L2 (CC4): 2 concurrent expeditions or −25% expedition time. Cost 1200 Metal, 600 Crystal, 600 Gold. Time 6m.
+Notes: In this POC, auto only. Future active missions may layer in.
+
+I) Research Lab (optional in POC; stub for upgrades)
+Purpose: unlocks global techs (drone speed, array improvements, storage efficiency).
+Unlock: CC4.
+Build cost L1: 1200 Metal, 800 Crystal, 600 Gold. Time 8m.
+Example techs (bind to existing systems):
+Drone Optimization I: +10% Mining Drone rate. Cost 500 Metal, 200 Crystal.
+Array Materials I: −10% array decommission chance on collapse (future), or −10% Beam damage factor globally.
+Scanner Algorithms I: +1 max tracked rift (cap by Scanner level).
+Keep as hooks for later expansions.
+
+J) Shipyard / Hangar (future)
+Purpose: build ships. Not in tutorial path. High costs and Exotics.
+Unlock: CC4 or CC5.
+
+K) Defense Turret / Shield (future)
+Purpose: base defense for PvE/PvP. Not needed in POC.
+
+UNITS AND OBJECTS
+
+Mining Drone Mk I
+Function: round-trip mining from asteroid clusters for metal.
+Cost: 50 Metal, 50 Gold. Build time 30s.
+Stats (logic targets): capacity 50 metal per trip, trip time scales with distance (short clusters 20–30s round trip), unload instant. Effective early income ~60–120 metal/min with 2–3 drones.
+
+Extraction Arrays (deployed, not traveling)
+Mk1: 2 crystals per tick (10s). Built at Array Bay. Idle upgrades allowed (Uplink, Beam, Telemetry).
+Mk2: 5 crystals/tick.
+Mk3: 10 crystals/tick.
+
+Explorer Drone (implicit)
+Managed by Expedition Center. Brings back Exotic Items per cycle. No microcontrol in POC.
+
+ASTEROID CLUSTERS (Metal)
+Parameters per cluster:
+Yield pool: finite (e.g., 5000–15000 metal) or infinite light stream for POC. Start with finite to teach depletion.
+Distance class: affects travel time. Short/Mid/Deep.
+Recommended drone tier: Mk I sufficient in POC.
+
+DIMENSIONAL RIFTS (Crystal)
+Generated by scans. Properties:
+Stability 500–1000. Richness 5–15. Volatility 0.8–1.2. Distance class tracked but not used by arrays in POC.
+Tick: every 10s. Decay: (1 + 0.5×extracted) × volatility. On 0 stability → collapse. Deployed array decommissions.
+
+EXOTIC ITEMS
+AI Core: needed for Attack Robots and high CC upgrades (optional). Source: Exploration.
+Alien Alloy: future hull upgrades, Shipyard. Source: Exploration (post CC4).
+Relic Shards: future tech unlock currency. Source: Exploration.
+
+ECONOMY TARGETS (EARLY)
+Goal: reach CC2 in ~5–10 minutes. Obtain first crystals in next 10–20 minutes. Reach CC3 in ~30–45 minutes. Build first robot ~45–60 minutes with one exploration cycle.
+
+TUTORIAL WALKTHROUGH (INTEGRATED)
+
+Step 1: Build Drone Factory (CC1)
+Prompt: build Drone Factory. Cost 50 Metal, 200 Gold. Time 15s.
+Build Mining Drone Mk I. Cost 50/50. Time 30s.
+
+Step 2: Assign Drone to Metal Asteroid
+Reveal 2 metal clusters. Player assigns drone. Metal begins accruing.
+Tip: build a second drone when able.
+
+Step 3: Build Metal Warehouse L1
+Warn on approaching 500 cap. Build Warehouse L1. Cap becomes 1000.
+
+Step 4: Upgrade Command Center to L2
+Cost 600 Metal, 200 Gold. Time 1m. While upgrading, keep mining. No module can exceed CC level.
+
+Step 5: Discover Rifts (Rift Scanner)
+On CC2 complete, prompt to build Rift Scanner. Cost 300 Metal, 150 Gold. Time 1m.
+Click Scan. Generate up to Scanner cap (2) rifts with random stability, richness, volatility.
+
+Step 6: Prepare Crystal Storage (Crystal Silo)
+Build Crystal Silo L1. Cost 200 Metal, 100 Gold. Time 30s. Cap 500 crystal.
+
+Step 7: Build Arrays (Array Bay)
+Build Array Bay L1. Cost 350 Metal, 200 Gold. Time 1m.
+Construct one Mk1 Array. Cost 200 Metal, 100 Gold. Time 30s.
+Deploy array to chosen rift. Begin continuous crystal income 2 per tick.
+Explain decay: every tick rift stability decreases by passive + extraction factor × volatility. On collapse, rift disappears and array is lost. Scan new rifts and build new arrays to continue crystal flow.
+Optional: Build a second Mk1 and deploy to second rift.
+
+Step 8: Resource Planning
+Keep 1–2 drones on metal. Keep 1–2 arrays on rifts. Upgrade Drone Factory L2 if desired. Upgrade Metal Warehouse L2 if you hit 1000 often.
+
+Step 9: Upgrade Command Center to L3
+Cost 1000 Metal, 500 Gold. Time 5m. (No crystal required here to avoid circular dependency.)
+While waiting: build another array, scan if a rift collapses, continue metal mining.
+
+Step 10: Build Robotics Factory (L1)
+Unlocks at CC3. Build cost 800 Metal, 200 Crystal, 300 Gold. Time 5m.
+Attempt to build Attack Robot Mk I: cost 500 Metal, 200 Crystal, 1 AI Core, 100 Gold.
+Missing AI Core triggers Exploration tutorial.
+
+Step 11: Build Expedition Center
+Build cost 500 Metal, 300 Crystal, 300 Gold. Time 4m.
+Launch Explorer Drone. Fixed POC cycle: 10 minutes → returns with 1 AI Core.
+While waiting: maintain arrays (scan new rifts if collapsed), mine metal, expand storage.
+
+Step 12: Build First Attack Robot
+Consume AI Core. Build time 10m. On completion, show unit list and simple stats. Robot stands by for future missions.
+
+Step 13: Next Goals
+Upgrade CC to L4 to unlock Research Lab (and future Shipyard). Increase Array Bay to L2 for Mk2 arrays and third deploy slot. Increase Rift Scanner to L2 for 4 tracked rifts. Increase Crystal Silo to L2. Continue Expeditions for more Exotics.
+
+UI REQUIREMENTS
+
+Global HUD: Gold, Metal (cap), Crystal (cap), Exotics (count), Build Queue timer.
+Left panel: Modules list with status, level, upgrade button, “i” details.
+Resource panel: Asteroid clusters list with assigned drones and states (en route, mining, unloading). Rift panel: discovered rifts with stability bar, richness, volatility, deployed array badge.
+Scanner panel: Scan button, cooldown (optional), tracked rifts count vs cap.
+Array Bay panel: Array build queue, inventory of idle arrays, per-array upgrades (Uplink/Beam/Telemetry), Deploy/Recall buttons.
+Expedition panel: active expeditions, timer, possible rewards, launch button.
+Module info panels must show: current level effects, next level benefits, cost, time, dependencies, and “unlocks on upgrade”.
+
+BALANCING NOTES AND SAFEGUARDS
+
+Crystals start at CC2 via arrays. This avoids circular gating on CC3. Robotics Factory at CC3 needs crystals, now available.
+Arrays get destroyed on collapse to create ongoing crystal sink and build decisions. Early costs are low to keep cadence.
+Scanner caps rifts to 2/4/6 to create meaningful upgrade pressure and avoid infinite stacking.
+Array Bay deploy slots 2/3/4 to let players scale income in step with Scanner and Silo.
+Exploration provides AI Cores at fixed early cadence to ensure first robot within session 1.
+Storage caps ensure players build Warehouse/Silo on time.
+All early timers ≤ 15 minutes. Only CC4+ and future modules exceed that.
+
+DATA BLOCKS (INITIAL VALUES FOR IMPLEMENTATION)
+
+Build/Upgrade Costs (baseline)
+Command Center: L2 600 Metal, 200 Gold, 1m; L3 1000 Metal, 500 Gold, 5m; L4 5000 Metal, 1000 Crystal, 1000 Gold, 60m.
+Drone Factory: L1 50 Metal, 200 Gold, 15s; L2 300 Metal, 200 Gold, 50 Crystal, 1m; L3 1000 Metal, 200 Crystal, 300 Gold, 5m.
+Metal Warehouse: L1 100/100, 15s; L2 300/120, 45s; L3 1000 + 50 Crystal + 200 Gold, 2m; L4 4000 + 500 Crystal + 600 Gold, 10m.
+Crystal Silo: L1 200 Metal, 100 Gold, 30s; L2 500 Metal, 200 Crystal, 200 Gold, 2m; L3 2000 Metal, 800 Crystal, 500 Gold, 10m.
+Rift Scanner: L1 300 Metal, 150 Gold, 1m; L2 600 Metal, 300 Gold, 2m; L3 1500 Metal, 700 Gold, 300 Crystal, 6m.
+Array Bay: L1 350 Metal, 200 Gold, 1m; L2 700 Metal, 300 Gold, 2m; L3 1800 Metal, 800 Gold, 300 Crystal, 6m.
+Robotics Factory: L1 800 Metal, 200 Crystal, 300 Gold, 5m; L2 2000 Metal, 1000 Crystal, 2 AI Cores, 500 Gold, 10m.
+Expedition Center: L1 500 Metal, 300 Crystal, 300 Gold, 4m; L2 1200 Metal, 600 Crystal, 600 Gold, 6m.
+
+Unit Costs
+Mining Drone Mk I: 50 Metal, 50 Gold, 30s.
+Array Mk1: 200 Metal, 100 Gold, 30s; Mk2: 500/250, 60s; Mk3: 1000/500, 120s.
+Array Upgrades: Uplink 100 Metal, 50 Gold (×1.5 per level); Beam 80/40 (×1.4); Telemetry 60/30 (×1.3).
+Attack Robot Mk I: 500 Metal, 200 Crystal, 1 AI Core, 100 Gold, 10m.
+
+System Parameters
+Server Tick: 10 seconds (arrays and rift decay).
+Rift Stability: 500–1000.
+Rift Volatility: 0.8–1.2.
+Rift Richness: 5–15 (reference).
+Decay formula: stability_loss = (1 + 0.5 × extracted_per_tick) × volatility.
+Scanner Max Rifts: 2/4/6 by level.
+Array Deploy Slots: 2/3/4 by Array Bay level.
+Crystal Silo Caps: 500/3000/12000 by level.
+Metal Warehouse Caps: 1000/5000/20000/80000 by level.
+Exploration Cycle: 10 minutes → 1 AI Core (POC fixed).
+
+PROGRESSION CHECK (NO DEAD ENDS)
+
+CC1 → Drone Factory, Metal Warehouse.
+Mine metal → Warehouse L1.
+CC2 → Rift Scanner, Array Bay, Crystal Silo.
+Scan rifts → build arrays → begin crystal flow.
+CC3 → Robotics Factory, Expedition Center.
+Attempt robot → need AI Core → Exploration → build robot.
+CC4 → Research Lab and future Shipyard. Expand arrays and scanner to scale crystal. Continue exploration for more exotics.
+
+FUTURE MULTIPLAYER HOOKS
+
+Abstract interfaces:
+INetworkMatchmaking (later maps to AWS GameLift).
+IServerTick (current local tick; later server-authoritative).
+IInventory and ISaveGame (JSON now; later cloud save).
+Combat and PvP out of scope for POC; retain placeholders.
+
+IMPLEMENTATION ORDER (RECOMMENDED)
+
+ResourceManager, Storage caps, HUD.
+
+BuildQueue and Module base class with CC level cap enforcement.
+
+Drone Factory, Mining Drones, AsteroidClusters.
+
+Metal Warehouse.
+
+Rift Scanner, Array Bay, Arrays, Rift data, Tick system and decay.
+
+Crystal Silo.
+
+Command Center upgrades.
+
+Expedition Center with fixed AI Core cadence.
+
+Robotics Factory and Attack Robot recipe.
+
+Tutorial scripting.
