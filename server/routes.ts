@@ -932,7 +932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (cost.metal && player.metal < cost.metal) {
         missingResources.push(`metal (need ${cost.metal}, have ${player.metal})`);
       }
-      if (cost.crystals && player.crystals < cost.crystals) {
+      if ('crystals' in cost && cost.crystals && player.crystals < cost.crystals) {
         missingResources.push(`crystals (need ${cost.crystals}, have ${player.crystals})`);
       }
       
@@ -947,7 +947,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Deduct resources
       await storage.updatePlayer(userId, {
         metal: player.metal - (cost.metal || 0),
-        crystals: player.crystals - (cost.crystals || 0),
+        crystals: player.crystals - (('crystals' in cost) ? (cost.crystals || 0) : 0),
       });
 
       // Create station module
@@ -1043,7 +1043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           nextLevelCost = {
             level: nextLevelConfig.level,
             metal: nextLevelConfig.metal,
-            crystals: nextLevelConfig.crystals || 0,
+            crystals: ('crystals' in nextLevelConfig) ? nextLevelConfig.crystals : 0,
             gold: nextLevelConfig.gold,
           };
         }

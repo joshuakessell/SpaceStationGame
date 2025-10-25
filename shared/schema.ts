@@ -258,6 +258,58 @@ export const CENTRAL_HUB_CONFIG = {
   ],
 } as const;
 
+// Metal Warehouse storage upgrade configuration
+export const METAL_WAREHOUSE_CONFIG = {
+  maxLevel: 5,
+  storageCaps: [
+    { level: 1, capacity: 1000 },
+    { level: 2, capacity: 5000 },
+    { level: 3, capacity: 20000 },
+    { level: 4, capacity: 50000 },
+    { level: 5, capacity: 100000 },
+  ],
+  upgradeCosts: [
+    { level: 1, metal: 100, gold: 100 }, // Build cost for L1
+    { level: 2, metal: 300, gold: 120 }, // Upgrade cost to L2
+    { level: 3, metal: 1000, crystals: 50, gold: 200 }, // Upgrade cost to L3
+    { level: 4, metal: 3000, crystals: 200, gold: 400 }, // Upgrade cost to L4
+    { level: 5, metal: 8000, crystals: 500, gold: 800 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 15 },
+    { level: 2, seconds: 45 },
+    { level: 3, seconds: 120 },
+    { level: 4, seconds: 300 },
+    { level: 5, seconds: 600 },
+  ],
+} as const;
+
+// Crystal Silo storage upgrade configuration
+export const CRYSTAL_SILO_CONFIG = {
+  maxLevel: 5,
+  storageCaps: [
+    { level: 1, capacity: 500 },
+    { level: 2, capacity: 3000 },
+    { level: 3, capacity: 10000 },
+    { level: 4, capacity: 30000 },
+    { level: 5, capacity: 75000 },
+  ],
+  upgradeCosts: [
+    { level: 1, metal: 200, gold: 100 }, // Build cost for L1
+    { level: 2, metal: 500, crystals: 200, gold: 200 }, // Upgrade cost to L2
+    { level: 3, metal: 1500, crystals: 500, gold: 400 }, // Upgrade cost to L3
+    { level: 4, metal: 4000, crystals: 1200, gold: 800 }, // Upgrade cost to L4
+    { level: 5, metal: 10000, crystals: 3000, gold: 1500 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 30 },
+    { level: 2, seconds: 120 },
+    { level: 3, seconds: 300 },
+    { level: 4, seconds: 600 },
+    { level: 5, seconds: 900 },
+  ],
+} as const;
+
 // Building power consumption by type
 export const BUILDING_POWER_COSTS = {
   command_core: 0, // Central Hub doesn't consume power
@@ -268,12 +320,16 @@ export const BUILDING_POWER_COSTS = {
   research_bay: 15, // Phase 6: Moderate power consumption for research facility
   shipyard: 20, // Phase 7: Higher power for ship construction facility
   power_module: 0, // Power modules don't consume power
+  metal_warehouse: 1, // Minimal power for storage management
+  crystal_silo: 1, // Minimal power for crystal containment
 } as const;
 
 // Module unlock requirements by hub level
 export const MODULE_UNLOCK_REQUIREMENTS: Record<string, { hubLevel: number; description: string }> = {
   "drone_hangar": { hubLevel: 1, description: "Available from start" },
   "array_bay": { hubLevel: 1, description: "Available from start" },
+  "metal_warehouse": { hubLevel: 1, description: "Available from start" },
+  "crystal_silo": { hubLevel: 2, description: "Unlocked at Central Hub Level 2" },
   "research_bay": { hubLevel: 3, description: "Unlocked at Central Hub Level 3" },
   "shipyard": { hubLevel: 5, description: "Unlocked at Central Hub Level 5" },
   // Power modules have tier gating via POWER_MODULE_TIERS
