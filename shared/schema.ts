@@ -42,10 +42,12 @@ export const players = pgTable("players", {
   metal: integer("metal").notNull().default(100),
   crystals: integer("crystals").notNull().default(0),
   exotic: integer("exotic").notNull().default(0), // Rare items from exploration
+  aiCores: integer("ai_cores").notNull().default(0), // AI Cores from expeditions
   // Storage caps
   maxMetal: integer("max_metal").notNull().default(1000),
   maxCrystals: integer("max_crystals").notNull().default(500),
   maxExotic: integer("max_exotic").notNull().default(100),
+  maxAiCores: integer("max_ai_cores").notNull().default(50), // AI Core storage cap
   // Power system (Phase 5)
   powerGeneration: integer("power_generation").notNull().default(0),
   powerConsumption: integer("power_consumption").notNull().default(0),
@@ -395,6 +397,33 @@ export const SHIPYARD_CONFIG = {
   ],
 } as const;
 
+// Expedition Center upgrade configuration (unlocks at Hub L4, passive AI Core generation)
+export const EXPEDITION_CENTER_CONFIG = {
+  maxLevel: 5,
+  // Expedition cycle durations (idle timer that generates AI Core rewards)
+  expeditionCycles: [
+    { level: 1, cycleSeconds: 600, aiCoreReward: 1 }, // 10 min, 1 AI Core
+    { level: 2, cycleSeconds: 480, aiCoreReward: 2 }, // 8 min, 2 AI Cores
+    { level: 3, cycleSeconds: 360, aiCoreReward: 3 }, // 6 min, 3 AI Cores
+    { level: 4, cycleSeconds: 300, aiCoreReward: 5 }, // 5 min, 5 AI Cores
+    { level: 5, cycleSeconds: 240, aiCoreReward: 8 }, // 4 min, 8 AI Cores
+  ],
+  upgradeCosts: [
+    { level: 1, metal: 1500, crystals: 800, gold: 800 }, // Build cost for L1
+    { level: 2, metal: 3500, crystals: 1800, gold: 1500 }, // Upgrade cost to L2
+    { level: 3, metal: 8000, crystals: 4000, gold: 3000 }, // Upgrade cost to L3
+    { level: 4, metal: 18000, crystals: 9000, gold: 6000 }, // Upgrade cost to L4
+    { level: 5, metal: 40000, crystals: 20000, gold: 12000 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 150 },
+    { level: 2, seconds: 420 },
+    { level: 3, seconds: 900 },
+    { level: 4, seconds: 1800 },
+    { level: 5, seconds: 3600 },
+  ],
+} as const;
+
 // Building power consumption by type
 export const BUILDING_POWER_COSTS = {
   command_core: 0, // Central Hub doesn't consume power
@@ -403,6 +432,7 @@ export const BUILDING_POWER_COSTS = {
   rift_scanner: 5,
   array_bay: 4,
   research_bay: 15, // Phase 6: Moderate power consumption for research facility
+  expedition_center: 10, // Phase 7+: Moderate power for exotic exploration
   shipyard: 20, // Phase 7: Higher power for ship construction facility
   power_module: 0, // Power modules don't consume power
   metal_warehouse: 1, // Minimal power for storage management
@@ -416,6 +446,7 @@ export const MODULE_UNLOCK_REQUIREMENTS: Record<string, { hubLevel: number; desc
   "metal_warehouse": { hubLevel: 1, description: "Available from start" },
   "crystal_silo": { hubLevel: 2, description: "Unlocked at Central Hub Level 2" },
   "research_bay": { hubLevel: 3, description: "Unlocked at Central Hub Level 3" },
+  "expedition_center": { hubLevel: 4, description: "Unlocked at Central Hub Level 4" },
   "shipyard": { hubLevel: 5, description: "Unlocked at Central Hub Level 5" },
   // Power modules have tier gating via POWER_MODULE_TIERS
 };
@@ -1050,9 +1081,11 @@ export const updatePlayerSchema = z.object({
   metal: z.number().optional(),
   crystals: z.number().optional(),
   exotic: z.number().optional(),
+  aiCores: z.number().optional(),
   maxMetal: z.number().optional(),
   maxCrystals: z.number().optional(),
   maxExotic: z.number().optional(),
+  maxAiCores: z.number().optional(),
   powerGeneration: z.number().optional(),
   powerConsumption: z.number().optional(),
   maxDrones: z.number().optional(),

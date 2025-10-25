@@ -947,6 +947,12 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
+      // Enforce "no module exceeds Command Center level" rule
+      const moduleLevel = moduleData.level || 1;
+      if (moduleLevel > player.hubLevel) {
+        throw new Error(`Module level ${moduleLevel} exceeds Command Center level ${player.hubLevel}. Upgrade your Command Center first.`);
+      }
+
       // Calculate power cost
       const powerCost = BUILDING_POWER_COSTS[moduleType as keyof typeof BUILDING_POWER_COSTS] || 0;
 
