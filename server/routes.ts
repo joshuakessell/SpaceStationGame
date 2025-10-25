@@ -129,7 +129,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      res.json(player);
+      // Get dynamic storage caps based on warehouse/silo buildings
+      const storageCaps = await storage.getPlayerStorageCaps(userId);
+      
+      // Return player data with calculated storage caps
+      res.json({
+        ...player,
+        maxMetal: storageCaps.maxMetal,
+        maxCrystals: storageCaps.maxCrystals,
+      });
     } catch (error) {
       console.error("Error fetching player:", error);
       res.status(500).json({ message: "Failed to fetch player data" });

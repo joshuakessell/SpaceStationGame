@@ -554,10 +554,23 @@ export class DatabaseStorage implements IStorage {
           .where(eq(players.id, playerId));
 
         if (player) {
+          // Get dynamic storage caps (need to fetch buildings within transaction)
+          const buildingsResult = await tx.select().from(buildings).where(eq(buildings.playerId, playerId));
+          const metalWarehouses = buildingsResult.filter((b: any) => b.buildingType === 'metal_warehouse' && b.isBuilt);
+          const highestWarehouse = metalWarehouses.reduce((max: any, current: any) => {
+            return (current.level > max.level) ? current : max;
+          }, { level: 0 });
+          const maxMetal = highestWarehouse.level > 0
+            ? (METAL_WAREHOUSE_CONFIG.storageCaps.find(c => c.level === highestWarehouse.level)?.capacity || 500)
+            : 500;
+          
+          // Enforce storage cap
+          const newMetal = Math.min(player.metal + actualIronCollected, maxMetal);
+          
           await tx
             .update(players)
             .set({
-              metal: player.metal + actualIronCollected,
+              metal: newMetal,
               lastUpdatedAt: new Date(),
             })
             .where(eq(players.id, playerId));
