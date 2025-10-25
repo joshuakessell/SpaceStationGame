@@ -23,6 +23,8 @@ import {
   CENTRAL_HUB_CONFIG,
   BUILDING_POWER_COSTS,
   MODULE_UNLOCK_REQUIREMENTS,
+  METAL_WAREHOUSE_CONFIG,
+  CRYSTAL_SILO_CONFIG,
   RESEARCH_TREE,
   SHIP_CHASSIS,
   EQUIPMENT_CATALOG,
@@ -68,6 +70,7 @@ export interface IStorage {
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayer(id: string, updates: Partial<Player>): Promise<Player>;
   deletePlayer(id: string): Promise<void>;
+  getPlayerStorageCaps(playerId: string): Promise<{ maxMetal: number; maxCrystals: number }>;
   
   // Building operations
   getPlayerBuildings(playerId: string): Promise<Building[]>;
@@ -221,6 +224,34 @@ export class DatabaseStorage implements IStorage {
   async deletePlayer(id: string): Promise<void> {
     // Delete all player-related data (cascade will handle most of it due to FK constraints)
     await db.delete(players).where(eq(players.id, id));
+  }
+
+  async getPlayerStorageCaps(playerId: string): Promise<{ maxMetal: number; maxCrystals: number }> {
+    // Get all buildings for the player
+    const allBuildings = await this.getPlayerBuildings(playerId);
+    
+    // Find the highest level Metal Warehouse
+    const metalWarehouses = allBuildings.filter(b => b.buildingType === 'metal_warehouse' && b.isBuilt);
+    const highestMetalWarehouse = metalWarehouses.reduce((max, current) => {
+      return (current.level > max.level) ? current : max;
+    }, { level: 0 } as { level: number });
+    
+    // Find the highest level Crystal Silo
+    const crystalSilos = allBuildings.filter(b => b.buildingType === 'crystal_silo' && b.isBuilt);
+    const highestCrystalSilo = crystalSilos.reduce((max, current) => {
+      return (current.level > max.level) ? current : max;
+    }, { level: 0 } as { level: number });
+    
+    // Get storage cap from config or use base value
+    const maxMetal = highestMetalWarehouse.level > 0
+      ? (METAL_WAREHOUSE_CONFIG.storageCaps.find(c => c.level === highestMetalWarehouse.level)?.capacity || 500)
+      : 500; // Base storage without warehouse
+    
+    const maxCrystals = highestCrystalSilo.level > 0
+      ? (CRYSTAL_SILO_CONFIG.storageCaps.find(c => c.level === highestCrystalSilo.level)?.capacity || 200)
+      : 200; // Base storage without silo
+    
+    return { maxMetal, maxCrystals };
   }
 
   // Building operations

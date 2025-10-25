@@ -123,10 +123,13 @@ async function processArrayExtractionSingle(array: any) {
     return;
   }
 
+  // Get dynamic storage caps based on warehouse/silo levels
+  const storageCaps = await storage.getPlayerStorageCaps(array.playerId);
+
   // Update player crystals (respecting max cap)
   const newCrystals = Math.min(
     player.crystals + crystalsExtracted,
-    player.maxCrystals
+    storageCaps.maxCrystals
   );
 
   await db
