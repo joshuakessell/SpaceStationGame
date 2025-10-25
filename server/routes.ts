@@ -38,6 +38,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup Replit Auth
   await setupAuth(app);
 
+  // DEV MODE ONLY: Login without authentication
+  if (process.env.NODE_ENV === "development") {
+    app.get('/api/dev-login', async (req: any, res) => {
+      try {
+        const DEV_USER_ID = "dev-user-12345";
+        
+        // Create dev user in database if doesn't exist
+        await storage.upsertUser({
+          id: DEV_USER_ID,
+          email: "dev@example.com",
+          firstName: "Dev",
+          lastName: "User",
+          profileImageUrl: null,
+        });
+        
+        // Create fake session data that mimics OAuth flow
+        const fakeUser = {
+          claims: {
+            sub: DEV_USER_ID,
+            email: "dev@example.com",
+            first_name: "Dev",
+            last_name: "User",
+            exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60), // 7 days from now
+          },
+          access_token: "dev-token",
+          refresh_token: "dev-refresh-token",
+          expires_at: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60),
+        };
+        
+        // Manually log in the user
+        req.login(fakeUser, (err: any) => {
+          if (err) {
+            console.error("Dev login error:", err);
+            return res.status(500).json({ message: "Dev login failed" });
+          }
+          res.redirect("/");
+        });
+      } catch (error) {
+        console.error("Dev login error:", error);
+        res.status(500).json({ message: "Dev login failed" });
+      }
+    });
+  }
+
   // Get authenticated user
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
