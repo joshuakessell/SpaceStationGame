@@ -35,7 +35,7 @@ type TutorialStep =
   | "complete";
 
 interface BuildingData extends Building {
-  upgradeCost?: { credits?: number; metal?: number; crystals?: number };
+  upgradeCost?: { gold?: number; metal?: number; crystals?: number };
   upgradeTime?: number;
   description?: string;
   icon?: string;
@@ -56,7 +56,7 @@ export default function Game() {
   const [showBattle, setShowBattle] = useState(false);
   const [placementMode, setPlacementMode] = useState<{
     buildingType: string;
-    cost: { credits?: number; metal?: number; crystals?: number };
+    cost: { gold?: number; metal?: number; crystals?: number };
   } | null>(null);
   const [availablePositions, setAvailablePositions] = useState<Array<{ x: number; y: number }>>([]);
 
@@ -444,7 +444,6 @@ export default function Game() {
 
   const buildingsData = buildings.map(b => ({
     ...b,
-    id: b.buildingType,
     position: { x: b.positionX, y: b.positionY },
     icon: b.buildingType === "command" ? "🏢" : b.buildingType === "mine" ? "⛏️" : b.buildingType === "scanner" ? "📡" : b.buildingType === "crystal" ? "💎" : b.buildingType === "rift_scanner" ? "🌀" : b.buildingType === "array_bay" ? "🛸" : "🏭",
     description: b.buildingType === "command" ? "Command Center" : b.buildingType === "mine" ? "Ore Mine" : b.buildingType === "scanner" ? "Scanner Array" : b.buildingType === "crystal" ? "Crystal Synthesizer" : b.buildingType === "rift_scanner" ? "Rift Scanner" : b.buildingType === "array_bay" ? "Array Bay" : "Building",
