@@ -16,6 +16,7 @@ import {
   equipment,
   shipEquipment,
   combatMissions,
+  expeditions,
   DRONE_UPGRADE_CONFIG,
   ARRAY_UPGRADE_CONFIG,
   ARRAY_TIERS,
@@ -25,6 +26,7 @@ import {
   MODULE_UNLOCK_REQUIREMENTS,
   METAL_WAREHOUSE_CONFIG,
   CRYSTAL_SILO_CONFIG,
+  EXPEDITION_CENTER_CONFIG,
   RESEARCH_TREE,
   SHIP_CHASSIS,
   EQUIPMENT_CATALOG,
@@ -55,7 +57,8 @@ import {
   type Equipment,
   type InsertEquipment,
   type ShipEquipment,
-  type CombatMission
+  type CombatMission,
+  type Expedition
 } from "@shared/schema";
 import { calculateResearchBonuses, type ResearchBonuses } from "./bonus-system";
 import { simulateBattle, generateAIFleet, type AIFleetConfig } from "./combat-engine";
@@ -177,6 +180,12 @@ export interface IStorage {
   // Combat missions (Phase 8+9)
   startCombatMission(playerId: string, bossId: string): Promise<Battle>;
   getAvailableCombatMissions(playerId: string): Promise<any[]>;
+
+  // Expedition operations (Phase 7b - Task 7b)
+  startExpedition(playerId: string): Promise<Expedition>;
+  claimExpedition(playerId: string, expeditionId: string): Promise<{ aiCoresAwarded: number }>;
+  getPlayerExpeditions(playerId: string): Promise<Expedition[]>;
+  getActiveExpedition(playerId: string): Promise<Expedition | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1561,6 +1570,149 @@ export class DatabaseStorage implements IStorage {
     const completedIds = new Set(completedMissions.map(m => m.missionId));
 
     return BOSS_ENCOUNTERS.filter(boss => !completedIds.has(boss.id));
+  }
+
+  // Expedition operations (Phase 7b - Task 7b)
+  async startExpedition(playerId: string): Promise<Expedition> {
+    return await db.transaction(async (tx) => {
+      const player = await this.getPlayer(playerId);
+      if (!player) {
+        throw new Error("Player not found");
+      }
+
+      // Check for active expedition
+      const activeExpedition = await tx
+        .select()
+        .from(expeditions)
+        .where(and(
+          eq(expeditions.playerId, playerId),
+          eq(expeditions.status, "active")
+        ))
+        .limit(1);
+
+      if (activeExpedition.length > 0) {
+        throw new Error("An expedition is already in progress");
+      }
+
+      // Find the Expedition Center module
+      const expeditionCenter = await tx
+        .select()
+        .from(stationModules)
+        .where(and(
+          eq(stationModules.playerId, playerId),
+          eq(stationModules.moduleType, "expedition_center"),
+          eq(stationModules.isBuilt, true)
+        ))
+        .limit(1);
+
+      if (expeditionCenter.length === 0) {
+        throw new Error("Expedition Center not built");
+      }
+
+      const centerLevel = expeditionCenter[0].level || 1;
+      const cycleConfig = EXPEDITION_CENTER_CONFIG.expeditionCycles.find(c => c.level === centerLevel);
+      
+      if (!cycleConfig) {
+        throw new Error("Invalid expedition center level");
+      }
+
+      const now = new Date();
+      const completesAt = new Date(now.getTime() + cycleConfig.cycleSeconds * 1000);
+
+      const [expedition] = await tx
+        .insert(expeditions)
+        .values({
+          playerId,
+          expeditionCenterLevel: centerLevel,
+          status: "active",
+          aiCoreReward: cycleConfig.aiCoreReward,
+          cycleSeconds: cycleConfig.cycleSeconds,
+          startedAt: now,
+          completesAt,
+        })
+        .returning();
+
+      return expedition;
+    });
+  }
+
+  async claimExpedition(playerId: string, expeditionId: string): Promise<{ aiCoresAwarded: number }> {
+    return await db.transaction(async (tx) => {
+      const expedition = await tx
+        .select()
+        .from(expeditions)
+        .where(eq(expeditions.id, expeditionId))
+        .limit(1)
+        .for('update');
+
+      if (expedition.length === 0) {
+        throw new Error("Expedition not found");
+      }
+
+      const exp = expedition[0];
+
+      if (exp.playerId !== playerId) {
+        throw new Error("Expedition does not belong to this player");
+      }
+
+      if (exp.status !== "completed") {
+        throw new Error("Expedition is not completed yet");
+      }
+
+      if (exp.claimedAt) {
+        throw new Error("Expedition rewards already claimed");
+      }
+
+      const player = await this.getPlayer(playerId);
+      if (!player) {
+        throw new Error("Player not found");
+      }
+
+      // Award AI Cores (respecting max cap)
+      const newAiCores = Math.min(
+        player.aiCores + exp.aiCoreReward,
+        player.maxAiCores
+      );
+
+      await tx
+        .update(players)
+        .set({
+          aiCores: newAiCores,
+          lastUpdatedAt: new Date(),
+        })
+        .where(eq(players.id, playerId));
+
+      await tx
+        .update(expeditions)
+        .set({
+          status: "claimed",
+          claimedAt: new Date(),
+        })
+        .where(eq(expeditions.id, expeditionId));
+
+      return { aiCoresAwarded: exp.aiCoreReward };
+    });
+  }
+
+  async getPlayerExpeditions(playerId: string): Promise<Expedition[]> {
+    return await db
+      .select()
+      .from(expeditions)
+      .where(eq(expeditions.playerId, playerId))
+      .orderBy(expeditions.startedAt);
+  }
+
+  async getActiveExpedition(playerId: string): Promise<Expedition | null> {
+    const results = await db
+      .select()
+      .from(expeditions)
+      .where(and(
+        eq(expeditions.playerId, playerId),
+        eq(expeditions.status, "active")
+      ))
+      .limit(1);
+
+    return results.length > 0 ? results[0] : null;
   }
 }
 

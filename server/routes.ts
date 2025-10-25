@@ -1481,6 +1481,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ============================================================================
+  // EXPEDITIONS (Phase 7b - Task 7b)
+  // ============================================================================
+
+  // Start a new expedition
+  app.post("/api/expeditions/start", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expedition = await storage.startExpedition(userId);
+      res.json(expedition);
+    } catch (error: any) {
+      console.error("Error starting expedition:", error);
+      res.status(400).json({ message: error.message || "Failed to start expedition" });
+    }
+  });
+
+  // Claim expedition rewards
+  app.post("/api/expeditions/claim/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const result = await storage.claimExpedition(userId, id);
+      
+      // Fetch updated player data
+      const player = await storage.getPlayer(userId);
+      
+      res.json({ ...result, player });
+    } catch (error: any) {
+      console.error("Error claiming expedition:", error);
+      res.status(400).json({ message: error.message || "Failed to claim expedition" });
+    }
+  });
+
+  // Get player expeditions
+  app.get("/api/expeditions", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expeditions = await storage.getPlayerExpeditions(userId);
+      res.json(expeditions);
+    } catch (error) {
+      console.error("Error fetching expeditions:", error);
+      res.status(500).json({ message: "Failed to fetch expeditions" });
+    }
+  });
+
+  // Get active expedition
+  app.get("/api/expeditions/active", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const expedition = await storage.getActiveExpedition(userId);
+      res.json(expedition);
+    } catch (error) {
+      console.error("Error fetching active expedition:", error);
+      res.status(500).json({ message: "Failed to fetch active expedition" });
+    }
+  });
+
+  // ============================================================================
   // COMBAT MISSIONS (Phase 9)
   // ============================================================================
 

@@ -956,6 +956,24 @@ export const combatMissions = pgTable("combat_missions", {
   index("idx_combat_missions_status").on(table.status),
 ]);
 
+// Expeditions (AI Core collection cycles from Expedition Center)
+export const expeditions = pgTable("expeditions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  playerId: varchar("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  expeditionCenterLevel: integer("expedition_center_level").notNull(), // Level at time of start
+  status: text("status").notNull(), // active, completed, claimed
+  aiCoreReward: integer("ai_core_reward").notNull(), // Reward amount for this cycle
+  cycleSeconds: integer("cycle_seconds").notNull(), // Duration for this cycle
+  startedAt: timestamp("started_at").notNull().defaultNow(),
+  completesAt: timestamp("completes_at").notNull(), // When the expedition finishes
+  completedAt: timestamp("completed_at"), // When expedition was marked complete by tick system
+  claimedAt: timestamp("claimed_at"), // When player collects rewards
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_expeditions_player_id").on(table.playerId),
+  index("idx_expeditions_status").on(table.status),
+]);
+
 // Equipment catalog configuration
 export interface EquipmentCatalogItem {
   id: string;
@@ -1167,6 +1185,12 @@ export const insertCombatMissionSchema = createInsertSchema(combatMissions).omit
   startedAt: true,
 });
 
+export const expeditionSchema = createSelectSchema(expeditions);
+export const insertExpeditionSchema = createInsertSchema(expeditions).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Research tech validation schema
 export const researchTechSchema = z.object({
   id: z.string(),
@@ -1225,6 +1249,8 @@ export type ShipEquipment = typeof shipEquipment.$inferSelect;
 export type InsertShipEquipment = z.infer<typeof insertShipEquipmentSchema>;
 export type CombatMission = typeof combatMissions.$inferSelect;
 export type InsertCombatMission = z.infer<typeof insertCombatMissionSchema>;
+export type Expedition = typeof expeditions.$inferSelect;
+export type InsertExpedition = z.infer<typeof insertExpeditionSchema>;
 export type GuildMember = typeof guildMembers.$inferSelect;
 
 // ============================================================================

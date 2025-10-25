@@ -5,6 +5,7 @@ import { startMissionTickSystem } from "./mission-tick";
 import { startUpgradeTickSystem } from "./upgrade-tick";
 import { startRiftDecayTickSystem } from "./rift-decay-tick";
 import { startArrayExtractionTickSystem } from "./array-extraction-tick";
+import { startExpeditionTickSystem } from "./expedition-tick";
 
 const app = express();
 
@@ -89,5 +90,7 @@ app.use((req, res, next) => {
     startRiftDecayTickSystem();
     // Start array extraction tick system
     startArrayExtractionTickSystem();
+    // Start expedition tick system
+    startExpeditionTickSystem();
   });
 })();
