@@ -300,6 +300,101 @@ export const CRYSTAL_SILO_CONFIG = {
   ],
 } as const;
 
+// Drone Hangar upgrade configuration (unlocks higher tier drones)
+export const DRONE_HANGAR_CONFIG = {
+  maxLevel: 5,
+  upgradeCosts: [
+    { level: 1, metal: 150, gold: 100 }, // Build cost for L1
+    { level: 2, metal: 400, gold: 150 }, // Upgrade cost to L2
+    { level: 3, metal: 1200, crystals: 100, gold: 300 }, // Upgrade cost to L3
+    { level: 4, metal: 3500, crystals: 400, gold: 600 }, // Upgrade cost to L4
+    { level: 5, metal: 9000, crystals: 1000, gold: 1200 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 20 },
+    { level: 2, seconds: 60 },
+    { level: 3, seconds: 180 },
+    { level: 4, seconds: 360 },
+    { level: 5, seconds: 720 },
+  ],
+} as const;
+
+// Rift Scanner upgrade configuration (increases scan range and discovery rate)
+export const RIFT_SCANNER_CONFIG = {
+  maxLevel: 5,
+  upgradeCosts: [
+    { level: 1, metal: 200, crystals: 50, gold: 120 }, // Build cost for L1
+    { level: 2, metal: 600, crystals: 150, gold: 250 }, // Upgrade cost to L2
+    { level: 3, metal: 1800, crystals: 400, gold: 500 }, // Upgrade cost to L3
+    { level: 4, metal: 5000, crystals: 1000, gold: 1000 }, // Upgrade cost to L4
+    { level: 5, metal: 12000, crystals: 2500, gold: 2000 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 30 },
+    { level: 2, seconds: 90 },
+    { level: 3, seconds: 240 },
+    { level: 4, seconds: 480 },
+    { level: 5, seconds: 900 },
+  ],
+} as const;
+
+// Array Bay upgrade configuration (unlocks higher tier extraction arrays)
+export const ARRAY_BAY_CONFIG = {
+  maxLevel: 5,
+  upgradeCosts: [
+    { level: 1, metal: 250, crystals: 100, gold: 150 }, // Build cost for L1
+    { level: 2, metal: 700, crystals: 300, gold: 300 }, // Upgrade cost to L2
+    { level: 3, metal: 2000, crystals: 800, gold: 600 }, // Upgrade cost to L3
+    { level: 4, metal: 5500, crystals: 2000, gold: 1200 }, // Upgrade cost to L4
+    { level: 5, metal: 14000, crystals: 5000, gold: 2500 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 25 },
+    { level: 2, seconds: 75 },
+    { level: 3, seconds: 210 },
+    { level: 4, seconds: 420 },
+    { level: 5, seconds: 840 },
+  ],
+} as const;
+
+// Research Bay upgrade configuration (unlocks at Hub L3, improves research speed)
+export const RESEARCH_BAY_CONFIG = {
+  maxLevel: 5,
+  upgradeCosts: [
+    { level: 1, metal: 800, crystals: 400, gold: 500 }, // Build cost for L1
+    { level: 2, metal: 2000, crystals: 1000, gold: 800 }, // Upgrade cost to L2
+    { level: 3, metal: 5000, crystals: 2500, gold: 1500 }, // Upgrade cost to L3
+    { level: 4, metal: 12000, crystals: 6000, gold: 3000 }, // Upgrade cost to L4
+    { level: 5, metal: 25000, crystals: 12000, gold: 6000 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 120 },
+    { level: 2, seconds: 300 },
+    { level: 3, seconds: 600 },
+    { level: 4, seconds: 1200 },
+    { level: 5, seconds: 2400 },
+  ],
+} as const;
+
+// Shipyard upgrade configuration (unlocks at Hub L5, builds more powerful ships)
+export const SHIPYARD_CONFIG = {
+  maxLevel: 5,
+  upgradeCosts: [
+    { level: 1, metal: 2000, crystals: 1000, gold: 1000 }, // Build cost for L1
+    { level: 2, metal: 5000, crystals: 2500, gold: 2000 }, // Upgrade cost to L2
+    { level: 3, metal: 12000, crystals: 6000, gold: 4000 }, // Upgrade cost to L3
+    { level: 4, metal: 25000, crystals: 15000, gold: 8000 }, // Upgrade cost to L4
+    { level: 5, metal: 50000, crystals: 30000, gold: 15000 }, // Upgrade cost to L5
+  ],
+  upgradeDurations: [
+    { level: 1, seconds: 180 },
+    { level: 2, seconds: 360 },
+    { level: 3, seconds: 720 },
+    { level: 4, seconds: 1440 },
+    { level: 5, seconds: 2880 },
+  ],
+} as const;
+
 // Building power consumption by type
 export const BUILDING_POWER_COSTS = {
   command_core: 0, // Central Hub doesn't consume power
